@@ -6,3 +6,5 @@ opencv-contrib-python
 mmcv
 mmengine
 mmpose
+xtcocotools
+munkres
