@@ -1,0 +1,8 @@
+torch
+numpy
+pillow
+opencv-python
+opencv-contrib-python
+mmcv
+mmengine
+mmpose
