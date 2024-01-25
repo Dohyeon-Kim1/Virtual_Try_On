@@ -2,6 +2,7 @@ import torch
 
 from mmpose.apis import inference_topdown, init_model
 
+
 class FashionPoseEstimation:
     def __init__(self, kind, device="cpu"):
         cfgs_dict = {"short-sleeved-shirt" : "./models/mmpose/configs/fashion_2d_keypoint/topdown_heatmap/deepfashion2/td-hm_res50_6xb64-210e_deepfasion2-short-sleeved-shirt-256x192.py",
@@ -39,3 +40,34 @@ class FashionPoseEstimation:
 
     def predict(self, img):
         return inference_topdown(self.model, img)
+    
+    
+    class BodyPoseEstimation:
+        def __init__(self, device="cpu"):
+            cfg = ""
+            ckpt = ""
+            
+            if device == "cuda":
+                assert torch.cuda.is_available()
+            
+            self.device = device
+            self.model = init_model(cfg, ckpt, device=device)
+
+        def predict(self, img):
+            return inference_topdown(self.model, img)
+        
+    
+    class FashionSegmentation:
+        def __init__(self):
+            pass
+
+        def predict(self, img):
+            pass
+    
+    class LadiVTON:
+        def __init__(self):
+            pass    
+
+        def predict(self, *input):
+            pass
+
