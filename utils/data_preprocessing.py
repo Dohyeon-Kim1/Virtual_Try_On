@@ -37,7 +37,7 @@ def resize(img, size, keep_ratio=True):
 
 def coco_keypoint_mapping(key_pts):
     mapping_dict = {0:0, 2:6, 3:8, 4:10, 5:5, 6:7, 7:9, 8:12, 9:14, 10:16, 11:11, 12:13, 13:15, 14:2, 15:1, 16:4, 17:3}
-    new_key_pts = np.zeros_like(len(key_pts)+1)
+    new_key_pts = np.zeros((18,2))
     for i in range(len(key_pts)+1):
         if i == 1:
             new_key_pts[i] = (key_pts[5] + key_pts[6]) / 2.0
@@ -131,14 +131,14 @@ def create_mask(body_img, key_pts, seg_map):
     parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=5)
     parse_mask = np.logical_and(parser_mask_changeable, np.logical_not(parse_mask))
     parse_mask_total = np.logical_or(parse_mask, parser_mask_fixed)
-    parse_mask_total = parse_mask_total[:, :, np.newaxis]
+    parse_mask_total = parse_mask_total[np.newaxis, :, :]
 		
 	# body_img 차원에 맞춰 계산하기위해 parse_mask_total 모양 변경-> 위 과정
-    im_mask = (torch.Tensor(im_mask).permute(2,0,1) / 127.5) - 1
-    im_mask = body_img * parse_mask_total
     
-    inpaint_mask = 1 - parse_mask_total
-    inpaint_mask = torch.Tensor(inpaint_mask).permute(2,0,1)
+    im_mask = (torch.Tensor(body_img).permute(2,0,1) / 127.5) - 1
+    im_mask = im_mask * parse_mask_total
+    
+    inpaint_mask = torch.Tensor(1 - parse_mask_total)
     
     return inpaint_mask.unsqueeze(0), im_mask.unsqueeze(0)
 

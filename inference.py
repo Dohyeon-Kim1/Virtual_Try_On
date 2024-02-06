@@ -35,11 +35,11 @@ class Inferencer():
         key_pts = coco_keypoint_mapping(key_pts)
         seg_map = self.fashion_seg_model.predict(body_img)                                      # torch.Tensor (512,384)
 
+        mask_img, masked_img = create_mask(body_img, key_pts, seg_map)                                    
+        pose_map = keypoint_to_heatmap(key_pts)                                                 # torch.Tensor (18,512,384)
+
         body_img = self.transform(body_img).unsqueeze(0)
         cloth_img = self.transform(cloth_img).unsqueeze(0)
-
-        mask_img, masked_img = create_mask(key_pts, seg_map)                                    # 
-        pose_map = keypoint_to_heatmap(key_pts)                                                 # torch.Tensor (18,512,384)
         warped_cloth = self.vton_model.cloth_tps_transform(cloth_img, masked_img, pose_map)     # torch.Tensor (3,512,384)
         prompt_embeds = self.vton_model.cloth_embedding(cloth_img, category)
 
