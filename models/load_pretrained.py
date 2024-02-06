@@ -9,14 +9,15 @@ from diffusers import DDIMScheduler
 from diffusers.utils.import_utils import is_xformers_available
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
+from mmpose.apis import inference_topdown, init_model
 
-from models.mmpose.apis import inference_topdown, init_model
-from models.AutoencoderKL import AutoencoderKL, StableDiffusionTryOnePipeline
+from models.ladi_vton.AutoencoderKL import AutoencoderKL
+from models.ladi_vton.tryon_pipe import StableDiffusionTryOnePipeline
 from utils.encode_text_word_embedding import encode_text_word_embedding
 
 
 class FashionPoseEstimation():
-    def __init__(self, kind, device="cpu"):
+    def __init__(self, kind="short-sleeved-shirt", device="cpu"):
         cfgs_dict = {"short-sleeved-shirt" : "./models/mmpose/configs/fashion_2d_keypoint/topdown_heatmap/deepfashion2/td-hm_res50_6xb64-210e_deepfasion2-short-sleeved-shirt-256x192.py",
                      "long_sleeved_shirt" : "",
                      "short_sleeved_outwear": "",
@@ -142,15 +143,8 @@ class LadiVTON():
                                                         scheduler=self.val_scheduler,
                                                         emasc=self.emasc,
                                                         emasc_int_layers=[1,2,3,4,5]).to(device)
-
-        self.transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
     
     def cloth_tps_transform(self, cloth_img, masked_img, pose_map):
-        cloth_img = self.transform(cloth_img)
-
         low_cloth = torchvision.transforms.functional.resize(cloth_img, (256, 192),
                                                                 torchvision.transforms.InterpolationMode.BILINEAR, antialias=True)
         low_im_mask = torchvision.transforms.functional.resize(masked_img, (256, 192),
@@ -180,7 +174,7 @@ class LadiVTON():
 
     def cloth_embedding(self, cloth_img, category):
         # Get the visual features of the in-shop cloths
-        cloth_img = torchvision.transforms.functional.to_tensor(cloth_img)
+        cloth_img = (cloth_img + 1) / 2
         input_image = torchvision.transforms.functional.resize(cloth_img, (224, 224), antialias=True)
         processed_images = self.processor(images=input_image, return_tensors="pt")
         clip_cloth_features = self.vision_encoder(processed_images.pixel_values.to(self.device, dtype=self.weight_dtype)).last_hidden_state

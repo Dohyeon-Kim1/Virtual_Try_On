@@ -46,6 +46,7 @@ def coco_keypoint_mapping(key_pts):
 
 
 def create_mask(body_img, key_pts, seg_map):
+    seg_map = seg_map.cpu()
     body_img = np.array(body_img)
     parse_array = np.array(seg_map)
 
@@ -129,10 +130,16 @@ def create_mask(body_img, key_pts, seg_map):
     parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=5)
     parse_mask = np.logical_and(parser_mask_changeable, np.logical_not(parse_mask))
     parse_mask_total = np.logical_or(parse_mask, parser_mask_fixed)
+    parse_mask_total = parse_mask_total[:, :, np.newaxis]
+		
+	# body_img 차원에 맞춰 계산하기위해 parse_mask_total 모양 변경-> 위 과정
+    im_mask = (torch.Tensor(im_mask).permute(2,0,1) / 127.5) - 1
     im_mask = body_img * parse_mask_total
+    
     inpaint_mask = 1 - parse_mask_total
-    inpaint_mask = inpaint_mask.unsqueeze(0)
-    return inpaint_mask, im_mask
+    inpaint_mask = torch.Tensor(inpaint_mask).permute(2,0,1)
+    
+    return inpaint_mask.unsqueeze(0), im_mask.unsqueeze(0)
 
 
 def keypoint_to_heatmap(key_pts, size):
@@ -152,6 +159,6 @@ def keypoint_to_heatmap(key_pts, size):
         heatmaps.append(heatmap)
 
     pose_map = torch.stack(heatmaps)
-    return pose_map
+    return pose_map.unsqueeze(0)
 
 
