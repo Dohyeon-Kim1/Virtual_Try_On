@@ -28,19 +28,22 @@ class Inferencer():
         num_inference_steps = 50
 
         ## input preprocessing
-        body_img = resize(body_img, size=size, keep_ratio=True)                                            # PIL.Image
-        cloth_img = resize(cloth_img, size=size, keep_ratio=True)                                          # PIL.Image
+        body_img = resize(body_img, size=size, keep_ratio=True)
+        cloth_img = resize(cloth_img, size=size, keep_ratio=True)
         
-        key_pts = self.body_pose_model.predict(body_img)                                        # np.ndarray (17,2)
+        key_pts = self.body_pose_model.predict(body_img) 
         key_pts = coco_keypoint_mapping(key_pts)
-        seg_map = self.fashion_seg_model.predict(body_img)                                      # torch.Tensor (512,384)
-
+        seg_map = self.fashion_seg_model.predict(body_img)
         mask_img, masked_img = create_mask(body_img, key_pts, seg_map)                                    
-        pose_map = keypoint_to_heatmap(key_pts)                                                 # torch.Tensor (18,512,384)
+        pose_map = keypoint_to_heatmap(key_pts, size)
 
         body_img = self.transform(body_img).unsqueeze(0)
         cloth_img = self.transform(cloth_img).unsqueeze(0)
-        warped_cloth = self.vton_model.cloth_tps_transform(cloth_img, masked_img, pose_map)     # torch.Tensor (3,512,384)
+
+        body_img, cloth_img = body_img.to(self.device), cloth_img.to(self.device)
+        mask_img, masked_img, pose_map = mask_img.to(self.device), masked_img.to(self.device), pose_map.to(self.device)
+
+        warped_cloth = self.vton_model.cloth_tps_transform(cloth_img, masked_img, pose_map)
         prompt_embeds = self.vton_model.cloth_embedding(cloth_img, category)
 
 
@@ -55,7 +58,7 @@ class Inferencer():
             "width": size[1],
             "guidance_scale": guidance_scale,
             "num_images_per_prompt": 1,
-            "cloth_image_type": "warped_cloth",
+            "cloth_input_type": "warped",
             "num_inference_steps": num_inference_steps
         }
         vton_img = self.vton_model.predict(kwargs)
