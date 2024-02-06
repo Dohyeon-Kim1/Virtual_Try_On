@@ -21,8 +21,6 @@ class Inferencer():
                                              transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))])
 
     def inference(self, body_img, cloth_img, category):
-        assert isinstance(body_img, Image)
-        assert isinstance(cloth_img, Image)
         assert category in ["dresses", "upper_body", "lower_body"]
 
         size = (512,384)
@@ -30,14 +28,14 @@ class Inferencer():
         num_inference_steps = 50
 
         ## input preprocessing
-        body_img = resize(body_img, size=size,keep_ratio=True)                                            # PIL.Image
+        body_img = resize(body_img, size=size, keep_ratio=True)                                            # PIL.Image
         cloth_img = resize(cloth_img, size=size, keep_ratio=True)                                          # PIL.Image
         
         key_pts = self.body_pose_model.predict(body_img)                                        # np.ndarray (17,2)
         key_pts = coco_keypoint_mapping(key_pts)
         seg_map = self.fashion_seg_model.predict(body_img)                                      # torch.Tensor (512,384)
 
-        body_img = self.transform(body_img).unsqieeze(0)
+        body_img = self.transform(body_img).unsqueeze(0)
         cloth_img = self.transform(cloth_img).unsqueeze(0)
 
         mask_img, masked_img = create_mask(key_pts, seg_map)                                    # 

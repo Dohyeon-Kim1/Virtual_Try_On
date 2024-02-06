@@ -69,7 +69,7 @@ class BodyPoseEstimation():
     def predict(self, img):
         img = np.array(img)
         pred = inference_topdown(self.model, img)[0]
-        key_pts = pred.pred_instances.key_points[0]
+        key_pts = pred.pred_instances.keypoints[0]
         return key_pts
         
     
@@ -83,7 +83,7 @@ class FashionSegmentation():
         self.model = AutoModelForSemanticSegmentation.from_pretrained("mattmdjaga/segformer_b2_clothes")
 
     def predict(self, img):
-        input = self.extractor(img, return_tensors="pt")
+        input = self.processor(img, return_tensors="pt")
         output = self.model(**input)
         logits = output.logits
         upsampled_logits = nn.functional.interpolate(

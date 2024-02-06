@@ -37,8 +37,8 @@ def resize(img, size, keep_ratio=True):
 
 def coco_keypoint_mapping(key_pts):
     mapping_dict = {0:0, 2:6, 3:8, 4:10, 5:5, 6:7, 7:9, 8:12, 9:14, 10:16, 11:11, 12:13, 13:15, 14:2, 15:1, 16:4, 17:3}
-    new_key_pts = np.zeros_like(key_pts)
-    for i in range(len(key_pts)):
+    new_key_pts = np.zeros_like(len(key_pts)+1)
+    for i in range(len(key_pts)+1):
         if i == 1:
             new_key_pts[i] = (key_pts[5] + key_pts[6]) / 2.0
         else:
