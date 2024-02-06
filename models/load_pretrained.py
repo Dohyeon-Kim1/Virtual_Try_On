@@ -152,7 +152,6 @@ class LadiVTON():
         low_pose_map = torchvision.transforms.functional.resize(pose_map, (256, 192),
                                                                 torchvision.transforms.InterpolationMode.BILINEAR, antialias=True)
         
-        low_cloth, low_im_mask, low_pose_map = low_cloth.unsqueeze(0), low_im_mask.unsqueeze(0), low_pose_map.unsqueeze(0)
         agnostic = torch.cat([low_im_mask, low_pose_map], 1)
         low_grid, theta, rx, ry, cx, cy, rg, cg = self.tps(low_cloth.to(torch.float32), agnostic.to(torch.float32))
 
