@@ -174,7 +174,7 @@ class LadiVTON():
     def cloth_embedding(self, cloth_img, category):
         # Get the visual features of the in-shop cloths
         cloth_img = (cloth_img + 1) / 2
-        input_image = torchvision.transforms.functional.resize(cloth_img, (224, 224), antialias=True)
+        input_image = torchvision.transforms.functional.resize(cloth_img, (224, 224), antialias=True).clamp(0,1)
         processed_images = self.processor(images=input_image, return_tensors="pt")
         clip_cloth_features = self.vision_encoder(processed_images.pixel_values.to(self.device, dtype=self.weight_dtype)).last_hidden_state
 

@@ -93,7 +93,7 @@ def create_mask(body_img, key_pts, seg_map):
     wrist_right = (key_pts[4][0], key_pts[4][1])
     wrist_left = (key_pts[7][0], key_pts[7][1])
 
-    ARM_LINE_WIDTH = 90
+    ARM_LINE_WIDTH = 0
     if wrist_right[0] <= 1. and wrist_right[1] <= 1.:
         if elbow_right[0] <= 1. and elbow_right[1] <= 1.:
             arms_draw.line(
