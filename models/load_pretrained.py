@@ -57,7 +57,7 @@ class FashionPoseEstimation():
     
 class BodyPoseEstimation():
     def __init__(self, device="cpu"):
-        cfg = "configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
+        cfg = "./models/mmpose/configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
         ckpt = "https://download.openmmlab.com/mmpose/v1/projects/rtmo/rtmo-s_8xb32-600e_coco-640x640-8db55a59_20231211.pth"
         
         if device == "cuda":
