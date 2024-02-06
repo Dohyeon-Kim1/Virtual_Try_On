@@ -18,7 +18,7 @@ class Inferencer():
         self.vton_model = LadiVTON(device=device)
 
         self.transform = transforms.Compose([transforms.ToTensor(),
-                                             transforms.Normalizae((0.5,0.5,0.5), (0.5,0.5,0.5))])
+                                             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))])
 
     def inference(self, body_img, cloth_img, category):
         assert isinstance(body_img, Image)
@@ -30,8 +30,8 @@ class Inferencer():
         num_inference_steps = 50
 
         ## input preprocessing
-        body_img = resize(body_img, keep_ratio=True)                                            # PIL.Image
-        cloth_img = resize(cloth_img, keep_ratio=True)                                          # PIL.Image
+        body_img = resize(body_img, size=size,keep_ratio=True)                                            # PIL.Image
+        cloth_img = resize(cloth_img, size=size, keep_ratio=True)                                          # PIL.Image
         
         key_pts = self.body_pose_model.predict(body_img)                                        # np.ndarray (17,2)
         key_pts = coco_keypoint_mapping(key_pts)

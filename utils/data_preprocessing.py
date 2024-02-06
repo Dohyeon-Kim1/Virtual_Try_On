@@ -20,17 +20,18 @@ def remove_background(img, seg_map, kind):
 def resize(img, size, keep_ratio=True):
     if keep_ratio:
         w, h = img.size
-        ratio = size[1] / h
-        img = img.resize(int(w*ratio), int(h*ratio))
-        if int(w*ratio) > size[0]:
-            diff = int(w*ratio) - size[0]
-            new_img = Image.fromarray(np.array(img)[:,diff//2:diff//2+size[0],:])
+        ratio = size[0] / h
+        img = img.resize((int(w*ratio),int(h*ratio)))
+        if int(w*ratio) > size[1]:
+            diff = int(w*ratio) - size[1]
+            new_img = np.array(img)[:,diff//2:diff//2+size[1],:]
         else:
-            diff = size[0] - int(w*ratio)
-            new_img = np.zeros_like(size, dtype=np.uint8)
-            new_img = Image.fromarray(new_img[:,diff//2:diff//2+size[0],:])
+            diff = size[1] - int(w*ratio)
+            new_img = np.zeros((*size,3), dtype=np.uint8)
+            new_img[:,diff//2:diff//2+int(w*ratio),:] = np.array(img)
+        new_img = Image.fromarray(new_img)
     else:
-        new_img = img.resize(size)
+        new_img = img.resize(size[::-1])
     return new_img
 
 
