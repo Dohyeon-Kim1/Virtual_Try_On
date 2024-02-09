@@ -74,8 +74,7 @@ def create_mask(body_img, key_pts, seg_map, category):
     
     background = (parse_array == 0).astype(np.float32)
     
-    others = (parse_array == 8).astype(np.float32) + \
-             (parse_array == 16).astype(np.float32) + \
+    others = (parse_array == 16).astype(np.float32) + \
              (parse_array == 17).astype(np.float32)
 
     if category == "upper_body":
@@ -123,6 +122,7 @@ def create_mask(body_img, key_pts, seg_map, category):
             np.uint16).tolist(), 'white', ARM_LINE_WIDTH, 'curve')
 
     hands = np.logical_and(np.logical_not(im_arms), arms)
+    parse_mask *= np.logical_not(hands)
     
     parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=3)
     parse_mask *= np.logical_not(np.logical_or(fixed, hands))
