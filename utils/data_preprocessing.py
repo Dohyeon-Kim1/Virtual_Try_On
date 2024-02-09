@@ -46,46 +46,48 @@ def coco_keypoint_mapping(key_pts):
     return new_key_pts
 
 
-def create_mask(body_img, key_pts, seg_map):
+def create_mask(body_img, key_pts, seg_map, category):
     seg_map = seg_map.cpu()
     body_img = np.array(body_img)
     parse_array = np.array(seg_map)
 
-    parse_head = (parse_array == 1).astype(np.float32) + \
-                    (parse_array == 2).astype(np.float32) + \
-                    (parse_array == 3).astype(np.float32) + \
-                    (parse_array == 11).astype(np.float32)
+    head = (parse_array == 1).astype(np.float32) + \
+           (parse_array == 2).astype(np.float32) + \
+           (parse_array == 3).astype(np.float32) + \
+           (parse_array == 11).astype(np.float32)
     
-    parser_mask_fixed = (parse_array == 1).astype(np.float32) + \
-                        (parse_array == 2).astype(np.float32) + \
-                        (parse_array == 3).astype(np.float32) + \
-                        (parse_array == 5).astype(np.float32) + \
-                        (parse_array == 6).astype(np.float32) + \
-                        (parse_array == 8).astype(np.float32) + \
-                        (parse_array == 9).astype(np.float32) + \
-                        (parse_array == 10).astype(np.float32) + \
-                        (parse_array == 12).astype(np.float32) + \
-                        (parse_array == 13).astype(np.float32) + \
-                        (parse_array == 16).astype(np.float32)
-    
-    arms = (parse_array == 14).astype(np.float32) + (parse_array == 15).astype(np.float32)
-    
-    parse_cloth = parse_mask = (parse_array == 4).astype(np.float32)
-    
-    parser_mask_changeable = (parse_array == 0).astype(np.float32)
-    parser_mask_changeable += np.logical_and(parse_array, np.logical_not(parser_mask_fixed))
+    arms = (parse_array == 14).astype(np.float32) + \
+           (parse_array == 15).astype(np.float32)
 
-    parse_head = torch.from_numpy(parse_head)  # [0,1]
-    parse_cloth = torch.from_numpy(parse_cloth)  # [0,1]
-    parse_mask = torch.from_numpy(parse_mask)  # [0,1]
-    parser_mask_fixed = torch.from_numpy(parser_mask_fixed)
-    parser_mask_changeable = torch.from_numpy(parser_mask_changeable)
+    legs = (parse_array == 12).astype(np.float32) + \
+           (parse_array == 13).astype(np.float32)
 
-    parse_mask = parse_mask.cpu().numpy()
+    upper_cloth = (parse_array == 4).astype(np.float32)
 
-    im_arms = Image.new('L', (384,512))
-    arms_draw = ImageDraw.Draw(im_arms)
+    lower_cloth = (parse_array == 5).astype(np.float32) + \
+                  (parse_array == 6).astype(np.float32)
     
+    dress = (parse_array == 7).astype(np.float32)
+
+    shoes = (parse_array == 9).astype(np.float32) + \
+            (parse_array == 10).astype(np.float32)
+    
+    background = (parse_array == 0).astype(np.float32)
+    
+    others = (parse_array == 8).astype(np.float32) + \
+             (parse_array == 16).astype(np.float32) + \
+             (parse_array == 17).astype(np.float32)
+
+    if category == "upper_body":
+        parse_mask = upper_cloth + arms
+        fixed = head + legs + lower_cloth + shoes + others
+    elif category == "lower_body":
+        parse_mask = lower_cloth + legs
+        fixed = head + arms + upper_cloth + shoes + others
+    elif category == "dresses":
+        parse_mask = upper_cloth + lower_cloth + dress + arms + legs
+        fixed = head + shoes + others
+
     shoulder_right = (key_pts[2][0], key_pts[2][1])
     shoulder_left = (key_pts[5][0], key_pts[5][1])
     elbow_right = (key_pts[3][0], key_pts[3][1])
@@ -93,7 +95,10 @@ def create_mask(body_img, key_pts, seg_map):
     wrist_right = (key_pts[4][0], key_pts[4][1])
     wrist_left = (key_pts[7][0], key_pts[7][1])
 
-    ARM_LINE_WIDTH = 0
+    im_arms = Image.new('L', (384,512))
+    arms_draw = ImageDraw.Draw(im_arms)
+
+    ARM_LINE_WIDTH = 30
     if wrist_right[0] <= 1. and wrist_right[1] <= 1.:
         if elbow_right[0] <= 1. and elbow_right[1] <= 1.:
             arms_draw.line(
@@ -118,27 +123,14 @@ def create_mask(body_img, key_pts, seg_map):
             np.uint16).tolist(), 'white', ARM_LINE_WIDTH, 'curve')
 
     hands = np.logical_and(np.logical_not(im_arms), arms)
-    parse_mask += im_arms
-    parser_mask_fixed += hands
     
-    # delete neck
-    parse_head_2 = torch.clone(parse_head)
-    parser_mask_fixed = np.logical_or(parser_mask_fixed, np.array(parse_head_2, dtype=np.uint16))
-    parse_mask += np.logical_or(parse_mask, np.logical_and(np.array(parse_head, dtype=np.uint16),
-                                                           np.logical_not(np.array(parse_head_2, dtype=np.uint16))))
-    
-    # tune the amount of dilation here
-    parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=5)
-    parse_mask = np.logical_and(parser_mask_changeable, np.logical_not(parse_mask))
-    parse_mask_total = np.logical_or(parse_mask, parser_mask_fixed)
-    parse_mask_total = parse_mask_total[np.newaxis, :, :]
+    parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=3)
+    parse_mask *= np.logical_not(np.logical_or(fixed, hands))
+    parse_mask = parse_mask[np.newaxis, :, :]
 		
-	# body_img 차원에 맞춰 계산하기위해 parse_mask_total 모양 변경-> 위 과정
-    
-    im_mask = (torch.Tensor(body_img).permute(2,0,1) / 127.5) - 1
-    im_mask = im_mask * parse_mask_total
-    
-    inpaint_mask = torch.Tensor(1 - parse_mask_total)
+    inpaint_mask = torch.from_numpy(parse_mask)
+    im_mask = (torch.from_numpy(body_img).permute(2,0,1) / 127.5) - 1
+    im_mask = im_mask * (1-inpaint_mask)
     
     return inpaint_mask.unsqueeze(0), im_mask.unsqueeze(0)
 

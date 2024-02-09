@@ -34,7 +34,7 @@ class Inferencer():
         key_pts = self.body_pose_model.predict(body_img) 
         key_pts = coco_keypoint_mapping(key_pts)
         seg_map = self.fashion_seg_model.predict(body_img)
-        mask_img, masked_img = create_mask(body_img, key_pts, seg_map)                                    
+        mask_img, masked_img = create_mask(body_img, key_pts, seg_map, category)                                    
         pose_map = keypoint_to_heatmap(key_pts, size)
 
         body_img = self.transform(body_img).unsqueeze(0)
