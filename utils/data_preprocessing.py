@@ -124,7 +124,7 @@ def create_mask(body_img, key_pts, seg_map, category):
     hands = np.logical_and(np.logical_not(im_arms), arms)
     parse_mask *= np.logical_not(hands)
     
-    parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=3)
+    parse_mask = cv2.dilate(parse_mask, np.ones((5, 5), np.uint16), iterations=5)
     parse_mask *= np.logical_not(np.logical_or(fixed, hands))
     parse_mask = parse_mask[np.newaxis, :, :]
 		
