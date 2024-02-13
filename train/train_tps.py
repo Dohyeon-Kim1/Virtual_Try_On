@@ -1,12 +1,14 @@
-import numpy as np
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from tqdm import tqdm
 
+from models import BodyPoseEstimation, FashionSegmentation
 from utils import create_mask, keypoint_to_heatmap
 from utils.data_preprocessing import extract_cloth
+from utils.vgg_loss import VGGLoss
 
 
 def training_loop_tps(dataloader, tps, optimizer_tps, criterion_l1, scaler,
@@ -146,3 +148,30 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
     l1_loss = running_l1_loss / (step + 1)
     vgg_loss = running_vgg_loss / (step + 1)
     return loss, l1_loss, vgg_loss
+
+
+def train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref, 
+              epochs, save_dir, device="cpu"):
+    body_pose_model = BodyPoseEstimation(device=device)
+    seg_model = FashionSegmentation(device=device)
+
+    scaler = torch.cuda.amp.GradScaler()
+    criterion_l1 = nn.L1Loss()
+    criterion_vgg = VGGLoss().to(device)
+
+    for epoch in range(epochs):
+        train_loss, train_l1_loss, train_const_loss = training_loop_tps(dataloader, tps, optimizer_tps, criterion_l1, scaler,
+                                                                        body_pose_model, seg_model, device)
+        print(f"Epoch {epoch+1}/{epochs}  loss: {round(train_loss, 4)}  l1_loss: {round(train_l1_loss, 4)}  const_loss: {round(train_const_loss, 4)}")
+    
+    scaler = torch.cuda.amp.GradScaler()
+
+    for epoch in range(epochs):
+        train_loss, train_l1_loss, train_vgg_loss = training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criterion_l1, criterion_vgg, scaler,
+                                                                             body_pose_model, seg_model, device)
+        print(f"Epoch {epoch+1}/{epochs}  loss: {round(train_loss, 4)}  l1_loss: {round(train_l1_loss, 4)}  vgg_loss: {round(train_vgg_loss, 4)}")
+    
+    save_path = f"tps_ckpt/{save_dir}"
+    if not(os.path.exists(save_path)):
+        os.makedirs(save_path)
+    torch.save({"tps": tps.state_dict(), "refinement": refinement.state_dict()}, f"{save_path}/tps_checkpoint_last.pth")

@@ -1,27 +1,78 @@
 import argparse
-import numpy as np
-import cv2
+import torch
+from torch.utils.data import DataLoader
 from PIL import Image
 
-from models.load_pretrained import FashionPoseEstimation
-from functions.transform import cloth_transform
+from models.ladi_vton.ConvNet_TPS import ConvNet_TPS
+from models.ladi_vton.UNet import UNetVanilla
+from dataset.dataset import BodyClothPairDataset
+from train.train_tps import train_tps
+from inference import Inferencer
+
 
 def parse_argument():
     parser = argparse.ArgumentParser(description="Virtual Try On")
-    parser.add_argument("--kind", type=str, help="the kind of cloth")
-    parser.add_argument("--img1", type=str, help="the path of image 1")
-    parser.add_argument("--img2", type=str, help="the path of image 2")
+    parser.add_argument("--train", type=int, default=0, 
+                        help="whether to train model or not")
+    parser.add_argument("--device", type=str, default="cpu", 
+                        help="the location in which model train or infernce")
+    
+    ## train options
+    parser.add_argument("--model_kind", type=str, default=None, 
+                        help="what kind of model you want to train")
+    parser.add_argument("--pretrained", type=int, default=1)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--save_dir", type=str, default=None,
+                        help="the location in which model's checkpoints are saved")
+
+
+    ## inference options
+    parser.add_argument("--category", type=str, default=None, 
+                        help="the category of cloth")
+    parser.add_argument("--body_img", type=str, default=None, 
+                        help="the path of body image")
+    parser.add_argument("--cloth_img", type=str, default=None, 
+                        help="the path of cloth image")
+    parser.add_argument("--guidance_scale", type=float, default=5.0)
+    parser.add_argument("--num_inference_steps", type=int, default=50)
+
+
     args = parser.parse_args()
     return args
 
+
 if __name__ == "__main__":
     args = parse_argument()
-    model = FashionPoseEstimation(kind=args.kind)
-    img1 = cv2.imread(args.img1)
-    img2 = cv2.imread(args.img2)
 
-    pred1 = model.predict(img1)[0]
-    pred2 = model.predict(img2)[0]
+    if args.train:
+        dataset = BodyClothPairDataset()
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+        if args.model_kind == "tps":
+            if args.pretrained:
+                tps, refinement = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='warping_module', dataset="dresscode")
+                tps, refinement = tps.to(args.device), refinement.to(args.device)
+            else:
+                tps = ConvNet_TPS(256, 192, 21, 3).to(args.device)
+                refinement = UNetVanilla(n_channels=24, n_classes=3, bilinear=True).to(args.device)
+            
+            optimizer_tps = torch.optim.Adam(tps.parameters(), lr=args.lr, betas=(0.5, 0.99))
+            optimizer_ref = torch.optim.Adam(list(refinement.parameters()), lr=args.lr, betas=(0.5, 0.99))
 
-    transformed_img = cloth_transform(img2, pred2, pred1, kind="short-sleeved-shirt")
-    cv2.imwrite("images/transformed_image.png", transformed_img)
+            train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref,
+                      args.epochs, args.save_dir, args.device)
+        elif args.model_kind == "emasc":
+            pass
+        elif args.model_kind == "inversion_adapter":
+            pass
+        elif args.model_kind == "vto":
+            pass
+    else:
+        inferencer = Inferencer(device=args.device)
+        body_img = Image.open(args.body_img)
+        cloth_img = Image.open(args.cloth_img)
+        
+        output = inferencer.inference(body_img, cloth_img, args.category, 
+                                      args.guidance_scale, args.num_inference_steps)
+        Image.save(output, "images/output.png")
