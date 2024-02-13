@@ -179,4 +179,19 @@ def keypoint_to_heatmap(key_pts, size):
     pose_maps = torch.stack(pose_maps)
     return pose_maps
 
+def extract_cloth(cloth_imgs, seg_maps, categories):
+    only_cloth_imgs = []
+    for cloth_img, seg_map, category in zip(cloth_imgs, seg_maps, categories):
+        if category == "upper_body":
+            mask = (seg_map == 4)
+        elif category == "lower_body":
+            mask = (seg_map == 5) + \
+                   (seg_map == 6)
+        elif category == "dresses":
+            mask = (seg_map == 7)
+        only_cloth_img = cloth_img * mask + torch.ones_like(cloth_img) * ~mask
+        only_cloth_imgs.append(only_cloth_img)
+    only_cloth_imgs = torch.stack(only_cloth_imgs)
+    return only_cloth_imgs
+
 

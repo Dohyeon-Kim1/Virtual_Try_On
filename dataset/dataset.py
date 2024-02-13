@@ -6,7 +6,7 @@ from PIL import Image
 from utils import resize
 
 
-DATA_ROOT = ["/DressCode", "/AI-Hub-Fashion"]
+DATA_ROOT = ["/content/gdrive/MyDrive/DressCode"]
 
 
 class BodyClothPairDataset(torch.utils.data.Dataset):

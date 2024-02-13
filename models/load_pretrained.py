@@ -3,10 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import numpy as np
-from PIL import Image
-from accelerate import Accelerator
 from diffusers import DDIMScheduler
-from diffusers.utils.import_utils import is_xformers_available
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
 from mmpose.apis import inference_bottomup, init_model
