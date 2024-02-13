@@ -3,8 +3,8 @@ import numpy as np
 from PIL import Image
 from torchvision import transforms
 
-from models import FashionPoseEstimation, BodyPoseEstimation, FashionSegmentation, LadiVTON
-from utils import create_mask, resize, keypoint_to_heatmap, coco_keypoint_mapping
+from models import BodyPoseEstimation, FashionSegmentation, LadiVTON
+from utils import resize, create_mask, keypoint_to_heatmap
 
 class Inferencer():
     def __init__(self, device="cpu"):
@@ -12,7 +12,6 @@ class Inferencer():
             assert torch.cuda.is_available()
         self.device = device
 
-        self.fashion_pose_model = FashionPoseEstimation(device=device)
         self.body_pose_model = BodyPoseEstimation(device=device)
         self.fashion_seg_model = FashionSegmentation(device=device)
         self.vton_model = LadiVTON(device=device)
@@ -20,28 +19,26 @@ class Inferencer():
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))])
 
-    def inference(self, body_img, cloth_img, category):
+    def inference(self, body_img, cloth_img, category, guidance_scale=5.0, num_inference_steps=50):
         assert category in ["dresses", "upper_body", "lower_body"]
 
         size = (512,384)
-        guidance_scale = 5.0
-        num_inference_steps = 50
 
         ## input preprocessing
         body_img = resize(body_img, size=size, keep_ratio=True)
         cloth_img = resize(cloth_img, size=size, keep_ratio=True)
         
-        key_pts = self.body_pose_model.predict(body_img) 
-        key_pts = coco_keypoint_mapping(key_pts)
+        body_img = self.transform(body_img).unsqueeze(0).to(self.device)
+        cloth_img = self.transform(cloth_img).unsqueeze(0).to(self.device)
+
+        key_pt = self.body_pose_model.predict(body_img)
         seg_map = self.fashion_seg_model.predict(body_img)
-        mask_img, masked_img = create_mask(body_img, key_pts, seg_map, category)                                    
-        pose_map = keypoint_to_heatmap(key_pts, size)
+        mask_img, masked_img = create_mask(body_img, seg_map, key_pt, [f"{category}"])                                    
+        pose_map = keypoint_to_heatmap(key_pt, size)
 
-        body_img = self.transform(body_img).unsqueeze(0)
-        cloth_img = self.transform(cloth_img).unsqueeze(0)
-
-        body_img, cloth_img = body_img.to(self.device), cloth_img.to(self.device)
-        mask_img, masked_img, pose_map = mask_img.to(self.device), masked_img.to(self.device), pose_map.to(self.device)
+        mask_img = mask_img.to(self.device)
+        masked_img = masked_img.to(self.device)
+        pose_map = pose_map.to(self.device)
 
         warped_cloth = self.vton_model.cloth_tps_transform(cloth_img, masked_img, pose_map)
         prompt_embeds = self.vton_model.cloth_embedding(cloth_img, category)

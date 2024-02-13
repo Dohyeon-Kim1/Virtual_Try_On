@@ -9,68 +9,36 @@ from diffusers import DDIMScheduler
 from diffusers.utils.import_utils import is_xformers_available
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
-from mmpose.apis import inference_topdown, init_model
+from mmpose.apis import inference_bottomup, init_model
 
 from models.ladi_vton.AutoencoderKL import AutoencoderKL
 from models.ladi_vton.tryon_pipe import StableDiffusionTryOnePipeline
 from utils.encode_text_word_embedding import encode_text_word_embedding
-
-
-class FashionPoseEstimation():
-    def __init__(self, kind="short-sleeved-shirt", device="cpu"):
-        cfgs_dict = {"short-sleeved-shirt" : "./models/mmpose/configs/fashion_2d_keypoint/topdown_heatmap/deepfashion2/td-hm_res50_6xb64-210e_deepfasion2-short-sleeved-shirt-256x192.py",
-                     "long_sleeved_shirt" : "",
-                     "short_sleeved_outwear": "",
-                     "long_sleeved_outwear": "",
-                     "vest": "",
-                     "sling": "",
-                     "shorts": "",
-                     "trousers": "",
-                     "skirt": "",
-                     "short_sleeved_dress": "",
-                     "long_sleeved_dress": "",
-                     "vest_dress": "",
-                     "sling_dress": ""}
-        ckpts_dict = {"short-sleeved-shirt": "https://download.openmmlab.com/mmpose/fashion/resnet/res50_deepfashion2_short_sleeved_shirt_256x192-21e1c5da_20221208.pth",
-                      "long_sleeved_shirt": "",
-                      "short_sleeved_outwear": "",
-                      "long_sleeved_outwear": "",
-                      "vest": "",
-                      "sling": "",
-                      "shorts": "",
-                      "trousers": "",
-                      "skirt": "",
-                      "short_sleeved_dress": "",
-                      "long_sleeved_dress": "",
-                      "vest_dress": "",
-                      "sling_dress": ""}
-        assert kind in cfgs_dict and kind in ckpts_dict 
-        if device == "cuda":
-            assert torch.cuda.is_available()
-         
-        self.device = device 
-        self.model = init_model(cfgs_dict[kind], ckpts_dict[kind], device=device)
-
-    def predict(self, img):
-        return inference_topdown(self.model, img)
+from utils import coco_keypoint_mapping
+from utils.data_preprocessing import tensor_to_arr
     
     
 class BodyPoseEstimation():
     def __init__(self, device="cpu"):
         cfg = "./models/mmpose/configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
         ckpt = "https://download.openmmlab.com/mmpose/v1/projects/rtmo/rtmo-s_8xb32-600e_coco-640x640-8db55a59_20231211.pth"
-        
         if device == "cuda":
             assert torch.cuda.is_available()
-        
         self.device = device
-        self.model = init_model(cfg, ckpt, device=device)
 
-    def predict(self, img):
-        img = np.array(img)
-        pred = inference_topdown(self.model, img)[0]
-        key_pts = pred.pred_instances.keypoints[0]
-        return key_pts
+        self.model = init_model(cfg, ckpt, device=device)
+        self.model.eval()
+    
+    ## input: torch.Tensor (N,3,H,W) / output: np.ndarray (N,18,2)
+    @torch.no_grad()
+    def predict(self, imgs):
+        imgs = tensor_to_arr(imgs, scope=[-1,1], batch=True)
+        key_pts = []
+        for img in imgs:
+            pred = inference_bottomup(self.model, img)[0]
+            key_pt = pred.pred_instances.keypoints[0]
+            key_pts.append(coco_keypoint_mapping(key_pt))
+        return np.stack(key_pts)
         
     
 class FashionSegmentation():
@@ -81,19 +49,22 @@ class FashionSegmentation():
 
         self.processor = SegformerImageProcessor.from_pretrained("mattmdjaga/segformer_b2_clothes")
         self.model = AutoModelForSemanticSegmentation.from_pretrained("mattmdjaga/segformer_b2_clothes")
+        self.model.to(device)
+        self.model.eval()
 
-    def predict(self, img):
-        input = self.processor(img, return_tensors="pt")
-        output = self.model(**input)
-        logits = output.logits
-        upsampled_logits = nn.functional.interpolate(
-            logits,
+    ## input: torch.Tensor (N,3,H,W) / output: torch.Tensor (N,H,W)
+    @torch.no_grad()
+    def predict(self, imgs):
+        imgs = tensor_to_arr(imgs, scope=[-1,1], batch=True)
+        input = self.processor(imgs, return_tensors="pt").to(self.device)
+        low_output = self.model(**input).logits
+        output = nn.functional.interpolate(
+            low_output,
             size=(512,384),
             mode="bilinear",
             align_corners=False
-        )
-        pred = upsampled_logits.argmax(dim=1)[0]
-        return pred
+        ).argmax(dim=1)
+        return output
     
 
 class LadiVTON():
@@ -144,6 +115,7 @@ class LadiVTON():
                                                         emasc=self.emasc,
                                                         emasc_int_layers=[1,2,3,4,5]).to(device)
     
+    @torch.no_grad()
     def cloth_tps_transform(self, cloth_img, masked_img, pose_map):
         low_cloth = torchvision.transforms.functional.resize(cloth_img, (256, 192),
                                                                 torchvision.transforms.InterpolationMode.BILINEAR, antialias=True)
@@ -171,6 +143,7 @@ class LadiVTON():
 
         return warped_cloth
 
+    @torch.no_grad()
     def cloth_embedding(self, cloth_img, category):
         # Get the visual features of the in-shop cloths
         cloth_img = (cloth_img + 1) / 2
@@ -198,9 +171,9 @@ class LadiVTON():
         encoder_hidden_states = encode_text_word_embedding(self.text_encoder, tokenized_text, word_embeddings, 16).last_hidden_state
 
         return encoder_hidden_states
-
+    
+    @torch.no_grad()
     def predict(self, kwargs):
         return self.vton_pipe(generator=self.generator, **kwargs).images[0]
-            
             
 
