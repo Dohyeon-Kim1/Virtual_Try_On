@@ -34,8 +34,12 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
     vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-2-inpainting", subfolder="vae")
     vae.eval()
 
-    body_pose_model = BodyPoseEstimation()
-    seg_model = FashionSegmentation()
+    body_pose_model = BodyPoseEstimation(device=device)
+    seg_model = FashionSegmentation(device=device)
+
+    # Enable TF32 for faster training on Ampere GPUs,
+    # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
+    # torch.backends.cuda.matmul.allow_tf32 = True
 
     # Scheduler and math around the number of training steps.
     lr_scheduler = get_scheduler(
@@ -51,12 +55,6 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
     # Prepare everything with our `accelerator`.
     emasc, vae, dataloader, lr_scheduler, criterion_vgg = accelerator.prepare(
         emasc, vae, dataloader, lr_scheduler, criterion_vgg)
-
-    # We need to initialize the trackers we use, and also store our configuration.
-    # The trackers initializes automatically on the main process.
-    # if accelerator.is_main_process:
-    #     accelerator.init_trackers("LaDI_VTON_EMASC", config=vars(args),
-    #                               init_kwargs={"wandb": {"name": os.path.basename(args.output_dir)}})
     
     save_path = f"emasc_ckpt/{save_dir}"
     if not(os.path.exists(save_path)):
@@ -72,10 +70,8 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
 
     for epoch in range(epochs):
         emasc.train()
-        train_loss = 0.0
         for step, batch in enumerate(dataloader):
             image = batch[0].to(device)
-            cloth = batch[1].to(device)
             category = batch[2]
 
             key_pts = body_pose_model.predict(image)
@@ -124,7 +120,7 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
             if accelerator.sync_gradients:
                 progress_bar.update(1)
                 global_step += 1
-                accelerator.log({"train_loss": loss.item()}, step=global_step)
+                accelerator.log({"train_loss": loss.detach().item()}, step=global_step)
 
                 # Save checkpoint every checkpointing_steps steps
                 if global_step % 50 == 0:
