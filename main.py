@@ -99,8 +99,8 @@ if __name__ == "__main__":
             optimizer_inversion_adapter = torch.optim.AdamW(inversion_adapter.parameters(), lr=args.lr, betas=(0.9,0.999),
                                                             weight_decay=args.weight_decay, eps=1e-08)
                 
-            train_emasc(dataloader, inversion_adapter, optimizer_inversion_adapter,
-                        args.epochs, args.save_dir, args.device)
+            train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_adapter,
+                                    args.epochs, args.save_dir, args.device)
         elif args.model_kind == "vto":
             pass
     else:

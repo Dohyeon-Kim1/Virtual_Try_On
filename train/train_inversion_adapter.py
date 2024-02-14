@@ -55,10 +55,10 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
     body_pose_model = BodyPoseEstimation(device=device)
     seg_model = FashionSegmentation(device=device)
 
-    # if is_xformers_available():
-    #     unet.enable_xformers_memory_efficient_attention()
-    # else:
-    #     raise ValueError("xformers is not available. Make sure it is installed correctly")
+    if is_xformers_available():
+        unet.enable_xformers_memory_efficient_attention()
+    else:
+        raise ValueError("xformers is not available. Make sure it is installed correctly")
     
     # Enable TF32 for faster training on Ampere GPUs,
     # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
