@@ -1,14 +1,17 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
+from transformers import CLIPVisionModelWithProjection
 from PIL import Image
 
 from models.ladi_vton.ConvNet_TPS import ConvNet_TPS
 from models.ladi_vton.UNet import UNetVanilla
 from models.ladi_vton.emasc import EMASC
+from models.ladi_vton.inversion_adapter import InversionAdapter
 from dataset.dataset import BodyClothPairDataset
 from train.train_tps import train_tps
 from train.train_emasc import train_emasc
+from train.train_inversion_adapter import train_inversion_adapter
 from inference import Inferencer
 
 
@@ -84,7 +87,20 @@ if __name__ == "__main__":
             train_emasc(dataloader, emasc, optimizer_emasc,
                         args.epochs, args.save_dir, args.device)
         elif args.model_kind == "inversion_adapter":
-            pass
+            if args.pretrained:
+                emasc = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                       model='inversion_adapter', dataset="dresscode")
+            else:
+                vision_encoder = CLIPVisionModelWithProjection.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
+                inversion_adapter = InversionAdapter(input_dim=1280, hidden_dim=1280 * 4, output_dim=1024 * 16,
+                                                     num_encoder_layers=1, config=vision_encoder.config)
+            inversion_adapter.to(args.device)
+
+            optimizer_inversion_adapter = torch.optim.AdamW(inversion_adapter.parameters(), lr=args.lr, betas=(0.9,0.999),
+                                                            weight_decay=args.weight_decay, eps=1e-08)
+                
+            train_emasc(dataloader, inversion_adapter, optimizer_inversion_adapter,
+                        args.epochs, args.save_dir, args.device)
         elif args.model_kind == "vto":
             pass
     else:
