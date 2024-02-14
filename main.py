@@ -5,8 +5,10 @@ from PIL import Image
 
 from models.ladi_vton.ConvNet_TPS import ConvNet_TPS
 from models.ladi_vton.UNet import UNetVanilla
+from models.ladi_vton.emasc import EMASC
 from dataset.dataset import BodyClothPairDataset
 from train.train_tps import train_tps
+from train.train_emasc import train_emasc
 from inference import Inferencer
 
 
@@ -23,7 +25,8 @@ def parse_argument():
     parser.add_argument("--pretrained", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--weight_decay", type=float, default=1e-2)
     parser.add_argument("--save_dir", type=str, default=None,
                         help="the location in which model's checkpoints are saved")
 
@@ -51,11 +54,12 @@ if __name__ == "__main__":
         dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
         if args.model_kind == "tps":
             if args.pretrained:
-                tps, refinement = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='warping_module', dataset="dresscode")
-                tps, refinement = tps.to(args.device), refinement.to(args.device)
+                tps, refinement = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                                 model='warping_module', dataset="dresscode")
             else:
-                tps = ConvNet_TPS(256, 192, 21, 3).to(args.device)
-                refinement = UNetVanilla(n_channels=24, n_classes=3, bilinear=True).to(args.device)
+                tps = ConvNet_TPS(256, 192, 21, 3)
+                refinement = UNetVanilla(n_channels=24, n_classes=3, bilinear=True)
+            tps, refinement = tps.to(args.device), refinement.to(args.device)
             
             optimizer_tps = torch.optim.Adam(tps.parameters(), lr=args.lr, betas=(0.5, 0.99))
             optimizer_ref = torch.optim.Adam(list(refinement.parameters()), lr=args.lr, betas=(0.5, 0.99))
@@ -63,7 +67,22 @@ if __name__ == "__main__":
             train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref,
                       args.epochs, args.save_dir, args.device)
         elif args.model_kind == "emasc":
-            pass
+            if args.pretrained:
+                emasc = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                       model='emasc', dataset="dresscode")
+            else:
+                in_feature_channels = [128, 128, 128, 256, 512]
+                out_feature_channels = [128, 256, 512, 512, 512]
+                int_layers = [1, 2, 3, 4, 5]
+                emasc = EMASC(in_feature_channels, out_feature_channels,
+                                kernel_size=3, padding=1, stride=1, type="nonlinear")
+            emasc.to(args.device)
+
+            optimizer_emasc = optimizer = torch.optim.AdamW(emasc.parameters(), lr=args.lr, betas=(0.9,0.999), 
+                                                                weight_decay=args.weight_decay, eps=1e-08)
+                
+            train_emasc(dataloader, emasc, optimizer_emasc,
+                        args.epochs, args.save_dir, args.device)
         elif args.model_kind == "inversion_adapter":
             pass
         elif args.model_kind == "vto":
