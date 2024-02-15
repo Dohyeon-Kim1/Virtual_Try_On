@@ -104,7 +104,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
     weight_dtype = torch.float16
 
     # Prepare everything with our `accelerator`.
-    unet, inversion_adapter, text_encoder, optimizer_unet, dataloader, lr_scheduler, dataloader = accelerator.prepare(
+    unet, inversion_adapter, text_encoder, optimizer_unet, dataloader, lr_scheduler = accelerator.prepare(
         unet, inversion_adapter, text_encoder, optimizer_unet, dataloader, lr_scheduler)
 
     # Move and vae to gpu and cast to weight_dtype
@@ -119,7 +119,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
     global_step = 0
 
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(epochs), disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(range(epochs * len(dataloader)), disable=not accelerator.is_local_main_process)
     progress_bar.set_description("Steps")
 
     for epoch in range(epochs):
@@ -132,7 +132,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
 
             key_pts = body_pose_model.predict(image)
             seg_maps = seg_model.predict(image)
-            pose_map = keypoint_to_heatmap(key_pts)
+            pose_map = keypoint_to_heatmap(key_pts, (512,384))
             inpaint_mask, im_mask = create_mask(image, seg_maps, key_pts, category)
 
             pose_map = pose_map.to(device)
@@ -145,7 +145,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                 latents = latents * vae.config.scaling_factor
 
                 # Get the pose map and resize it to the same size as the latents
-                pose_map = torch.nn.functional.interpolate(pose_map, size=(pose_map.shape[2] // 8, pose_map.shape[3] // 8), mode="bilinear")
+                pose_map_resize = torch.nn.functional.interpolate(pose_map, size=(pose_map.shape[2] // 8, pose_map.shape[3] // 8), mode="bilinear")
 
                 # Sample noise that we'll add to the latents
                 noise = torch.randn_like(latents)
@@ -220,7 +220,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                 uncond_mask_cloth = torch.rand(bsz, device=latents.device) < 0.2
                 uncond_mask_pose = torch.rand(bsz, device=latents.device) < 0.2
                 text = [t if not uncond_mask_text[i] else "" for i, t in enumerate(text)]
-                pose_map[uncond_mask_pose] = torch.zeros_like(pose_map[0])
+                pose_map_resize[uncond_mask_pose] = torch.zeros_like(pose_map_resize[0])
                 cloth_latents[uncond_mask_cloth] = torch.zeros_like(cloth_latents[0])
 
                 # Encode the text
@@ -234,7 +234,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                                                                     16).last_hidden_state
 
                 # Predict the noise residual and compute loss
-                unet_input = torch.cat([noisy_latents, mask, masked_image_latents, pose_map.to(weight_dtype), cloth_latents], dim=1)
+                unet_input = torch.cat([noisy_latents, mask, masked_image_latents, pose_map_resize.to(weight_dtype), cloth_latents], dim=1)
                 model_pred = unet(unet_input, timesteps, encoder_hidden_states).sample
 
                 # loss in accelerator.autocast according to docs https://huggingface.co/docs/accelerate/v0.15.0/quicktour#mixed-precision-training

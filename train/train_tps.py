@@ -24,7 +24,7 @@ def training_loop_tps(dataloader, tps, optimizer_tps, criterion_l1, scaler,
 
         key_pts = body_pose_model.predict(image)
         seg_maps = seg_model.predict(image)
-        pose_map = keypoint_to_heatmap(key_pts)
+        pose_map = keypoint_to_heatmap(key_pts, (512,384))
         _, im_mask = create_mask(image, seg_maps, key_pts, category)
         im_cloth = extract_cloth(cloth, seg_maps, category)
 
@@ -92,7 +92,7 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
 
         key_pts = body_pose_model.predict(image)
         seg_maps = seg_model.predict(image)
-        pose_map = keypoint_to_heatmap(key_pts)
+        pose_map = keypoint_to_heatmap(key_pts, (512,384))
         _, im_mask = create_mask(image, seg_maps, key_pts, category)
         im_cloth = extract_cloth(cloth, seg_maps, category)
 

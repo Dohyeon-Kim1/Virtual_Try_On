@@ -13,6 +13,7 @@ from dataset.dataset import BodyClothPairDataset
 from train.train_tps import train_tps
 from train.train_emasc import train_emasc
 from train.train_inversion_adapter import train_inversion_adapter
+from train.train_vto import train_vto
 from inference import Inferencer
 
 
@@ -123,9 +124,11 @@ if __name__ == "__main__":
                                                    model='inversion_adapter', dataset="dresscode")
             unet = UNet2DConditionModel.from_pretrained("stabilityai/stable-diffusion-2-inpainting", subfolder="unet")
 
-            optimizer = torch.optim.AdamW(unet.parameters(), lr=args.lr, betas=(0.9, 0.999),
-                                            weight_decay=args.weight_decay, eps=1e-8)
+            optimizer_unet = torch.optim.AdamW(unet.parameters(), lr=args.lr, betas=(0.9, 0.999),
+                                               weight_decay=args.weight_decay, eps=1e-8)
             
+            train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_unet,
+                      args.epochs, args.save_dir, args.device)
     else:
         inferencer = Inferencer(device=args.device)
         body_img = Image.open(args.body_img)
