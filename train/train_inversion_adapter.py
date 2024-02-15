@@ -90,7 +90,6 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
 
     # Train!
     global_step = 0
-    first_epoch = 0
 
     # Only show the progress bar once on each machine.
     progress_bar = tqdm(range(epochs * len(dataloader)), disable=not accelerator.is_local_main_process)
@@ -98,7 +97,6 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
 
     # Training loop
     for epoch in range(epochs):
-        train_loss = 0.0
         inversion_adapter.train()
         for step, batch in enumerate(dataloader):
             image = batch[0].to(device)

@@ -152,6 +152,9 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
 
 def train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref, 
               epochs, save_dir, device="cpu"):
+    tps.to(device)
+    refinement.to(device)
+    
     body_pose_model = BodyPoseEstimation(device=device)
     seg_model = FashionSegmentation(device=device)
 
