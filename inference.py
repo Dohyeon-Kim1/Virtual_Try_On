@@ -4,7 +4,7 @@ from PIL import Image
 from torchvision import transforms
 
 from models import BodyPoseEstimation, FashionSegmentation, LadiVTON
-from utils import resize, create_mask, keypoint_to_heatmap
+from utils import resize, create_mask, keypoint_to_heatmap, remove_background
 
 class Inferencer():
     def __init__(self, device="cpu"):
@@ -36,13 +36,15 @@ class Inferencer():
         mask_img, masked_img = create_mask(body_img, seg_map, key_pt, [f"{category}"])                                    
         pose_map = keypoint_to_heatmap(key_pt, size)
 
+        body_img = remove_background(body_img, seg_map)
+        cloth_img = remove_background(cloth_img, seg_map)
+
         mask_img = mask_img.to(self.device)
         masked_img = masked_img.to(self.device)
         pose_map = pose_map.to(self.device)
 
         warped_cloth = self.vton_model.cloth_tps_transform(cloth_img, masked_img, pose_map)
-        prompt_embeds = self.vton_model.cloth_embedding(cloth_img, category)
-
+        prompt_embeds = self.vton_model.cloth_embedding(cloth_img, [f"{category}"])
 
         ## generate image
         kwargs = {

@@ -158,7 +158,7 @@ class LadiVTON():
             'lower_body': 'a lower body garment'
             }
         
-        text = [f'a photo of a model wearing {category_text[category]} {" $ " * 16}']
+        text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in category]
         
         # Tokenize text
         tokenized_text = self.tokenizer(text, max_length=self.tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt").input_ids

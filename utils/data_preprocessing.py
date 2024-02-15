@@ -20,17 +20,10 @@ def tensor_to_arr(img, scope=[-1,1], batch=True):
     return img
 
 
-def remove_background(img, seg_map, kind):
-    assert kind in ["body", "cloth"] 
-    img = np.array(img)
-    seg_map = np.array(seg_map)
-    if kind == "body":
-        mask = (seg_map != 0).astype(np.uint8)
-        img = Image.fromarray(img * mask)
-    elif kind == "cloth":
-        mask = (seg_map == 4).astype(np.uint8)
-        img = Image.fromarray(img * mask)
-    return img
+def remove_background(imgs, seg_maps):
+	mask = (seg_maps == 0).unsqueeze(1)
+	imgs[mask] = 1.0
+	return imgs
 
 
 def resize(img, size, keep_ratio=True):

@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import torchvision
 import diffusers
-from diffusers import DDPMScheduler, UNet2DConditionModel, DDIMScheduler
+from diffusers import DDPMScheduler, DDIMScheduler
 from diffusers.optimization import get_scheduler
 from diffusers.utils.import_utils import is_xformers_available
 import transformers
@@ -228,7 +228,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                                            truncation=True, return_tensors="pt").input_ids
                 tokenized_text = tokenized_text.to(accelerator.device)
 
-                    # Encode the text using the PTEs extracted from the in-shop cloths
+                # Encode the text using the PTEs extracted from the in-shop cloths
                 encoder_hidden_states = encode_text_word_embedding(text_encoder, tokenized_text,
                                                                     word_embeddings,
                                                                     16).last_hidden_state
