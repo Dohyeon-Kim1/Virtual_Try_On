@@ -21,9 +21,9 @@ def tensor_to_arr(img, scope=[-1,1], batch=True):
 
 
 def remove_background(imgs, seg_maps):
-	mask = (seg_maps == 0).unsqueeze(1)
-	imgs[mask] = 1.0
-	return imgs
+    mask = torch.stack([(seg_maps==0)]*3, dim=1)
+    imgs[mask] = 1.0
+    return imgs
 
 
 def resize(img, size, keep_ratio=True):
