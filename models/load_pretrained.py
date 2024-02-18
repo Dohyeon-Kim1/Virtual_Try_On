@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from torchvison.models import resnet50
+from torchvision.models import resnet50
 import numpy as np
 from diffusers import DDIMScheduler
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor

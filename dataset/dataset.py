@@ -19,7 +19,7 @@ class BodyClothPairDataset(torch.utils.data.Dataset):
                 with open(f"{data_root}/{category}/pairs.txt", "r") as f:
                     for pair in f.readlines():
                         if (img_name1 in imgs_name) and (img_name2 in imgs_name):
-                            img_name1, img_name2 = pair.strip().split("\t")
+                            img_name1, img_name2 = pair.strip().split()
                             body_img_name = f"{data_root}/{category}/images/{img_name1}"
                             cloth_img_name = f"{data_root}/{category}/images/{img_name2}"
                             self.data.append([body_img_name, cloth_img_name, category])
