@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from torchvison.models import resnet50
 import numpy as np
 from diffusers import DDIMScheduler
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor
@@ -14,7 +15,28 @@ from utils.encode_text_word_embedding import encode_text_word_embedding
 from utils import coco_keypoint_mapping
 from utils.data_preprocessing import tensor_to_arr
     
+
+class ClothCategoryClassfication():
+    def __init__(self, device="cpu"):
+        ckpt = torch.load("model_zoo/cloth_category_classifier_max.pth")
+        if device == "cuda":
+            assert torch.cuda.is_available()
+        self.device = device
+        self.label_mapping = ckpt["label"]
+
+        self.model = resnet50(weights=None)
+        self.model.load_state_dict(ckpt["model_sd"])
+        self.model.to(device)
+        self.model.eval()
     
+    @torch.no_grad()
+    def predict(self, imgs):
+        imgs = torchvision.transforms.functional.resize(imgs, (128,96))
+        pred = self.model(imgs).argmax(dim=-1)
+        subcartgory = [self.label_mapping[i] for i in pred]
+        return subcartgory
+
+
 class BodyPoseEstimation():
     def __init__(self, device="cpu"):
         cfg = "./models/mmpose/configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
