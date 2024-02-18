@@ -62,7 +62,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
     
     # Enable TF32 for faster training on Ampere GPUs,
     # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
-    # torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cuda.matmul.allow_tf32 = True
 
     # Scheduler and math around the number of training steps.
     lr_scheduler = get_scheduler(
@@ -192,21 +192,28 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
                 accelerator.log({"train_loss": loss.detach().item()}, step=global_step)
 
                 # Save checkpoint every checkpointing_steps steps
-                if global_step % 50 == 0:
+                if global_step % 1000 == 0:
                     if accelerator.is_main_process:
-                        accelerator_state_path = f"{save_path}/accelerator_{global_step}"
-                        accelerator.save_state(accelerator_state_path)
+                        # accelerator_state_path = f"{save_path}/accelerator_{global_step}"
+                        # accelerator.save_state(accelerator_state_path)
 
                         # Unwrap the inversion adapter
                         unwrapped_adapter = accelerator.unwrap_model(inversion_adapter, keep_fp32_wrapper=True)
 
                         # Save inversion adapter model
-                        inversion_adapter_path = f"{save_path}/inversion_adapter_{global_step}"
+                        inversion_adapter_path = f"{save_path}/inversion_adapter_checkpoint_{global_step}.pth"
                         accelerator.save(unwrapped_adapter.state_dict(), inversion_adapter_path)
                         del unwrapped_adapter
 
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
+
+    # Unwrap the inversion adapter
+    unwrapped_adapter = accelerator.unwrap_model(inversion_adapter, keep_fp32_wrapper=True)
+
+    # Save inversion adapter model
+    inversion_adapter_path = f"{save_path}/inversion_adapter_checkpoint_last.pth"
+    accelerator.save(unwrapped_adapter.state_dict(), inversion_adapter_path)
 
     # End of training
     accelerator.wait_for_everyone()

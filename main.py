@@ -85,8 +85,8 @@ if __name__ == "__main__":
                 emasc = EMASC(in_feature_channels, out_feature_channels,
                                 kernel_size=3, padding=1, stride=1, type="nonlinear")
 
-            optimizer_emasc = optimizer = torch.optim.AdamW(emasc.parameters(), lr=args.lr, betas=(0.9,0.999), 
-                                                                weight_decay=args.weight_decay, eps=1e-08)
+            optimizer_emasc = torch.optim.AdamW(emasc.parameters(), lr=args.lr, betas=(0.9,0.999), 
+                                                weight_decay=args.weight_decay, eps=1e-08)
                 
             train_emasc(dataloader, emasc, optimizer_emasc,
                         args.epochs, args.save_dir, args.device)

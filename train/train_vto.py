@@ -90,8 +90,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
 
     # Enable TF32 for faster training on Ampere GPUs,
     # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
-    # if args.allow_tf32:
-    #     torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cuda.matmul.allow_tf32 = True
 
     # Scheduler and math around the number of training steps.
     lr_scheduler = get_scheduler(
@@ -257,16 +256,16 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                 accelerator.log({"train_loss": loss.detach().item()}, step=global_step)
 
                 # Save checkpoint every checkpointing_steps steps
-                if global_step % 50 == 0:
+                if global_step % 1000 == 0:
                     if accelerator.is_main_process:
-                        accelerator_state_path = f"{save_path}/accelerator_{global_step}"
-                        accelerator.save_state(accelerator_state_path)
+                        # accelerator_state_path = f"{save_path}/accelerator_{global_step}"
+                        # accelerator.save_state(accelerator_state_path)
 
                         # Unwrap the Unet
                         unwrapped_unet = accelerator.unwrap_model(unet, keep_fp32_wrapper=True)
 
                         # Save the unet
-                        unet_path = f"{save_path}/unet_{global_step}.pth"
+                        unet_path = f"{save_path}/unet_checkpoint_{global_step}.pth"
                         accelerator.save(unwrapped_unet.state_dict(), unet_path)
 
                         del unwrapped_unet
@@ -274,6 +273,13 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
 
+    # Unwrap the Unet
+    unwrapped_unet = accelerator.unwrap_model(unet, keep_fp32_wrapper=True)
+
+    # Save the unet
+    unet_path = f"{save_path}/unet_checkpoint_last.pth"
+    accelerator.save(unwrapped_unet.state_dict(), unet_path)
+            
     # End of training
     accelerator.wait_for_everyone()
     accelerator.end_training()
