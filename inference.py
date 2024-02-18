@@ -36,9 +36,6 @@ class Inferencer():
         mask_img, masked_img = create_mask(body_img, seg_map, key_pt, [f"{category}"])                                    
         pose_map = keypoint_to_heatmap(key_pt, size)
 
-        body_img = remove_background(body_img, seg_map)
-        cloth_img = remove_background(cloth_img, seg_map)
-
         mask_img = mask_img.to(self.device)
         masked_img = masked_img.to(self.device)
         pose_map = pose_map.to(self.device)
