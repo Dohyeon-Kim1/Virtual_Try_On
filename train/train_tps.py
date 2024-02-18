@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from models import BodyPoseEstimation, FashionSegmentation
 from utils import create_mask, keypoint_to_heatmap
-from utils.data_preprocessing import extract_cloth
+from utils.data_preprocessing import extract_cloth, remove_background
 from utils.vgg_loss import VGGLoss
 
 
@@ -17,14 +17,19 @@ def training_loop_tps(dataloader, tps, optimizer_tps, criterion_l1, scaler,
     running_loss = 0.
     running_l1_loss = 0.
     running_const_loss = 0.
-    for step, inputs in enumerate(tqdm(dataloader)):  # Yield images with low resolution (256x192)
+    progress = tqdm(dataloader)
+    for step, inputs in enumerate(progress):  # Yield images with low resolution (256x192)
         image = inputs[0].to(device)
         cloth = inputs[1].to(device)
         category = inputs[2]
 
-        key_pts = body_pose_model.predict(image)
         seg_maps = seg_model.predict(image)
+        image = remove_background(image, seg_maps)
+        cloth = remove_background(cloth, seg_maps)
+
+        key_pts = body_pose_model.predict(image)
         pose_map = keypoint_to_heatmap(key_pts, (512,384))
+
         _, im_mask = create_mask(image, seg_maps, key_pts, category)
         im_cloth = extract_cloth(cloth, seg_maps, category)
 
@@ -69,6 +74,8 @@ def training_loop_tps(dataloader, tps, optimizer_tps, criterion_l1, scaler,
         running_l1_loss += l1_loss.item()
         running_const_loss += const_loss.item()
 
+        progress.set_postfix({"loss": loss.item()})
+
     loss = running_loss / (step + 1)
     l1_loss = running_l1_loss / (step + 1)
     const_loss = running_const_loss / (step + 1)
@@ -85,14 +92,19 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
     running_loss = 0.
     running_l1_loss = 0.
     running_vgg_loss = 0.
-    for step, inputs in enumerate(tqdm(dataloader)):
+    progress = tqdm(dataloader)
+    for step, inputs in enumerate(progress):
         image = inputs[0].to(device)
         cloth = inputs[1].to(device)
         category = inputs[2]
 
-        key_pts = body_pose_model.predict(image)
         seg_maps = seg_model.predict(image)
+        image = remove_background(image, seg_maps)
+        cloth = remove_background(cloth, seg_maps)
+
+        key_pts = body_pose_model.predict(image)
         pose_map = keypoint_to_heatmap(key_pts, (512,384))
+
         _, im_mask = create_mask(image, seg_maps, key_pts, category)
         im_cloth = extract_cloth(cloth, seg_maps, category)
 
@@ -143,6 +155,8 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
         running_loss += loss.item()
         running_l1_loss += l1_loss.item()
         running_vgg_loss += vgg_loss.item()
+
+        progress.set_postfix({"loss": loss.item()})
 
     loss = running_loss / (step + 1)
     l1_loss = running_l1_loss / (step + 1)
