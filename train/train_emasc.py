@@ -135,7 +135,7 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
                         unwrapped_emasc = accelerator.unwrap_model(emasc, keep_fp32_wrapper=True)
 
                         # Save EMASC model
-                        emasc_path = f"{save_path}/emasc_{global_step}.pth"
+                        emasc_path = f"{save_path}/emasc_chcekpoint_{global_step}.pth"
                         accelerator.save(unwrapped_emasc.state_dict(), emasc_path)
                         del unwrapped_emasc
 

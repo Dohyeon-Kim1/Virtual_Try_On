@@ -18,7 +18,7 @@ from utils.data_preprocessing import tensor_to_arr
 
 class ClothCategoryClassfication():
     def __init__(self, device="cpu"):
-        ckpt = torch.load("model_zoo/cloth_category_classifier_max.pth")
+        ckpt = torch.load("model_zoo/cloth_category_classifier_max.pth", map_location="cpu")
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device
@@ -29,11 +29,26 @@ class ClothCategoryClassfication():
         self.model.to(device)
         self.model.eval()
     
+    ## input: torch.Tensor (N,3,H,W), List[str] / output: List[str]
     @torch.no_grad()
-    def predict(self, imgs):
+    def predict(self, imgs, category=None):
         imgs = torchvision.transforms.functional.resize(imgs, (128,96))
-        pred = self.model(imgs).argmax(dim=-1)
-        subcartgory = [self.label_mapping[i] for i in pred]
+        imgs = imgs.to(self.device)
+        pred = self.model(imgs).cpu()
+
+        if category is None:
+            subcartgory = [self.label_mapping[int(i)] for i in pred.argmax(dim=-1)]
+        else:
+            subcartgory = []
+            for i, c in enumerate(category):
+                if c == "upper_body":
+                    pred[i,[0,2,4,5]] = -torch.inf
+                    subcartgory.append(self.label_mapping[pred.argmax(dim=-1).item()])
+                elif c == "lower_body":
+                    pred[i,[1,3,5]] = -torch.inf
+                    subcartgory.append(self.label_mapping[pred.argmax(dim=-1).item()])
+                elif c == "dresses":
+                    subcartgory.append("dresses")
         return subcartgory
 
 

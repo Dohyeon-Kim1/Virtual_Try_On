@@ -36,7 +36,7 @@ def parse_argument():
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-5)
     parser.add_argument("--weight_decay", type=float, default=1e-2)
-    parser.add_argument("--save_dir", type=str, default=None,
+    parser.add_argument("--save_dir", type=str, default="checkpoint",
                         help="the location in which model's checkpoints are saved")
 
 

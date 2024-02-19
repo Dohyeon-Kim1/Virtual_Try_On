@@ -11,9 +11,9 @@ from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjec
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 
-from models import BodyPoseEstimation, FashionSegmentation
+from models import BodyPoseEstimation, FashionSegmentation, ClothCategoryClassfication
 from utils.encode_text_word_embedding import encode_text_word_embedding
-from utils.data_preprocessing import create_mask
+from utils.data_preprocessing import create_mask, remove_background
 
 
 def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_adapter,
@@ -54,6 +54,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
 
     body_pose_model = BodyPoseEstimation(device=device)
     seg_model = FashionSegmentation(device=device)
+    category_cls_model = ClothCategoryClassfication(device=device)
 
     if is_xformers_available():
         unet.enable_xformers_memory_efficient_attention()
@@ -84,7 +85,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
     vae.to(accelerator.device, dtype=weight_dtype)
     vision_encoder.to(accelerator.device, dtype=weight_dtype)
 
-    save_path = f"inversion_adpter_ckpt/{save_dir}"
+    save_path = f"..model_zoo/inversion_adpter/{save_dir}"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
 
@@ -102,9 +103,10 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
             image = batch[0].to(device)
             cloth = batch[1].to(device)
             category = batch[2]
-
-            key_pts = body_pose_model.predict(image)
+            
+            subcategory = category_cls_model.predict(cloth, category)
             seg_maps = seg_model.predict(image)
+            key_pts = body_pose_model.predict(image)
             inpaint_mask, im_mask = create_mask(image, seg_maps, key_pts, category)
 
             inpaint_mask = inpaint_mask.to(device)
@@ -129,12 +131,14 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
                 # Generate the text for training the inversion adapter, '$' will be replaced with the PTEs during the
                 # textual encoding process
                 category_text = {
-                    'dresses': 'a dress',
-                    'upper_body': 'an upper body garment',
-                    'lower_body': 'a lower body garment'
-
+                    'dresses': 'a suit of dress',
+                    'short_sleeved': 'a short sleeve tee',
+                    'long_sleeved': 'a long sleeve tee',
+                    'short_pants': 'a pair of shorts',
+                    'long_pants': 'a pair of pant',
+                    'skirts': 'a skirt'
                 }
-                text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in category]
+                text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in subcategory]
 
                 # Get the target for loss
                 target = noise
@@ -154,7 +158,8 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
 
                 # Get the visual features of the in-shop cloths
                 with torch.no_grad():
-                    input_image = torchvision.transforms.functional.resize((cloth + 1) / 2, (224, 224),
+                    input_image = remove_background(cloth)
+                    input_image = torchvision.transforms.functional.resize((input_image + 1) / 2, (224, 224),
                                                                             antialias=True).clamp(0, 1)
                     processed_images = processor(images=input_image, return_tensors="pt")
                     clip_cloth_features = vision_encoder(
