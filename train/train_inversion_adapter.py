@@ -85,7 +85,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
     vae.to(accelerator.device, dtype=weight_dtype)
     vision_encoder.to(accelerator.device, dtype=weight_dtype)
 
-    save_path = f"..model_zoo/inversion_adpter/{save_dir}"
+    save_path = f"model_zoo/inversion_adpter/{save_dir}"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
 
@@ -158,7 +158,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
 
                 # Get the visual features of the in-shop cloths
                 with torch.no_grad():
-                    input_image = remove_background(cloth)
+                    input_image = remove_background(cloth, seg_maps)
                     input_image = torchvision.transforms.functional.resize((input_image + 1) / 2, (224, 224),
                                                                             antialias=True).clamp(0, 1)
                     processed_images = processor(images=input_image, return_tensors="pt")

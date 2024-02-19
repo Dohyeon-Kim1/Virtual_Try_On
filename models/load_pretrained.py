@@ -25,6 +25,7 @@ class ClothCategoryClassfication():
         self.label_mapping = ckpt["label"]
 
         self.model = resnet50(weights=None)
+        self.model.fc = nn.Linear(2048,6)
         self.model.load_state_dict(ckpt["model_sd"])
         self.model.to(device)
         self.model.eval()
@@ -32,7 +33,7 @@ class ClothCategoryClassfication():
     ## input: torch.Tensor (N,3,H,W), List[str] / output: List[str]
     @torch.no_grad()
     def predict(self, imgs, category=None):
-        imgs = torchvision.transforms.functional.resize(imgs, (128,96))
+        imgs = torchvision.transforms.functional.resize(imgs, (128,96), antialias=True)
         imgs = imgs.to(self.device)
         pred = self.model(imgs).cpu()
 
@@ -43,10 +44,10 @@ class ClothCategoryClassfication():
             for i, c in enumerate(category):
                 if c == "upper_body":
                     pred[i,[0,2,4,5]] = -torch.inf
-                    subcartgory.append(self.label_mapping[pred.argmax(dim=-1).item()])
+                    subcartgory.append(self.label_mapping[pred[i].argmax(dim=-1).item()])
                 elif c == "lower_body":
                     pred[i,[1,3,5]] = -torch.inf
-                    subcartgory.append(self.label_mapping[pred.argmax(dim=-1).item()])
+                    subcartgory.append(self.label_mapping[pred[i].argmax(dim=-1).item()])
                 elif c == "dresses":
                     subcartgory.append("dresses")
         return subcartgory
