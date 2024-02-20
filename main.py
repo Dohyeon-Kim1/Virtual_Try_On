@@ -54,7 +54,6 @@ def parse_argument():
     parser.add_argument("--guidance_scale", type=float, default=5.0)
     parser.add_argument("--num_inference_steps", type=int, default=50)
 
-
     args = parser.parse_args()
     return args
 

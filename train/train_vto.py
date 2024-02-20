@@ -133,6 +133,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
             subcategory = category_cls_model.predict(cloth, category)
             seg_maps = seg_model.predict(image)
             key_pts = body_pose_model.predict(image)
+            pose_map = keypoint_to_heatmap(key_pts, (512,384))
             inpaint_mask, im_mask = create_mask(image, seg_maps, key_pts, category)
 
             pose_map = pose_map.to(device)
