@@ -12,9 +12,9 @@ from accelerate import Accelerator
 from tqdm.auto import tqdm
 
 from models.ladi_vton.AutoencoderKL import AutoencoderKL
-from models import BodyPoseEstimation, FashionSegmentation
+from models import BodyPoseEstimation, FashionSegmentation, ClothCategoryClassfication
 from utils.encode_text_word_embedding import encode_text_word_embedding
-from utils.data_preprocessing import keypoint_to_heatmap, create_mask
+from utils.data_preprocessing import keypoint_to_heatmap, create_mask, remove_background
 
 def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_unet,
               epochs, save_dir, device="cpu"):
@@ -47,6 +47,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
 
     body_pose_model = BodyPoseEstimation(device=device)
     seg_model = FashionSegmentation(device=device)
+    category_cls_model = ClothCategoryClassfication(device=device)
 
     tps.to(device)
     refinement.to(device)
@@ -129,9 +130,9 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
             cloth = batch[1].to(device)
             category = batch[2]
 
-            key_pts = body_pose_model.predict(image)
+            subcategory = category_cls_model.predict(cloth, category)
             seg_maps = seg_model.predict(image)
-            pose_map = keypoint_to_heatmap(key_pts, (512,384))
+            key_pts = body_pose_model.predict(image)
             inpaint_mask, im_mask = create_mask(image, seg_maps, key_pts, category)
 
             pose_map = pose_map.to(device)
@@ -161,15 +162,20 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
                 # Generate the text for training the inversion adapter, '$' will be replaced with the PTEs during the
                 # textual encoding process
                 category_text = {
-                    'dresses': 'a dress',
-                    'upper_body': 'an upper body garment',
-                    'lower_body': 'a lower body garment',
+                    'dresses': 'a suit of dress',
+                    'short_sleeved': 'a short sleeve tee',
+                    'long_sleeved': 'a long sleeve tee',
+                    'short_pants': 'a pair of shorts',
+                    'long_pants': 'a pair of pant',
+                    'skirts': 'a skirt'
                 }
-                text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in category]
+                text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in subcategory]
 
                 with torch.no_grad():
                     # Compute the visual features of the in-shop cloths
-                    input_image = torchvision.transforms.functional.resize((cloth + 1) / 2, (224, 224),antialias=True).clamp(0,1)
+                    input_image = remove_background(cloth, seg_maps)
+                    input_image = torchvision.transforms.functional.resize((cloth + 1) / 2, (224, 224),
+                                                                           antialias=True).clamp(0,1)
                     processed_images = processor(images=input_image, return_tensors="pt")
                     clip_cloth_features = vision_encoder(processed_images.pixel_values.to(accelerator.device).to(weight_dtype)).last_hidden_state
 
