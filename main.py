@@ -21,11 +21,15 @@ def parse_argument():
     parser = argparse.ArgumentParser(description="Virtual Try On")
     parser.add_argument("--train", type=int, default=0, 
                         help="whether to train model or not")
-    parser.add_argument("--tps_ckpt", type=str, default=None)
-    parser.add_argument("--emasc_ckpt", type=str, default=None)
-    parser.add_argument("--inversion_adapter_ckpt", type=str, default=None)
-    parser.add_argument("--unet_ckpt", type=str, default=None)
-    parser.add_argument("--device", type=str, default="cpu", 
+    parser.add_argument("--tps_ckpt", type=str, 
+                        default="model_zoo/tps/tps_checkpoint_last.pth")
+    parser.add_argument("--emasc_ckpt", type=str, 
+                        default="model_zoo/emasc/emasc_checkpoint_last.pth")
+    parser.add_argument("--inversion_adapter_ckpt", type=str, 
+                        default="model_zoo/inversion_adapter/inversion_adapter_checkpoint_last.pth")
+    parser.add_argument("--unet_ckpt", type=str, 
+                        default="model_zoo/unet/unet_checkpoint_last.pth")
+    parser.add_argument("--device", type=str, default="cuda", 
                         help="the location in which model train or infernce")
     
     ## train options

@@ -18,7 +18,7 @@ from utils.data_preprocessing import tensor_to_arr
 
 class ClothCategoryClassfication():
     def __init__(self, device="cpu"):
-        ckpt = torch.load("model_zoo/cloth_category_classifier_max.pth", map_location="cpu")
+        ckpt = torch.load("model_zoo/category_classifier/category_classifier_checkpoint_last.pth", map_location="cpu")
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device

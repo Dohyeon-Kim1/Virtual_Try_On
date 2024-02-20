@@ -48,7 +48,7 @@ def main():
 
         if total_acc > max_acc:
             torch.save({"model_sd": model.state_dict(), "label": dataset.label_mapping}, 
-                       f"cloth_category_classifier_max.pth")
+                       f"model_zoo/category_classifier/category_classifier_checkpoint_last.pth")
             max_acc = total_acc
 
 

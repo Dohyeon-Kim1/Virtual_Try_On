@@ -111,7 +111,7 @@ def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_un
     vae.to(accelerator.device, dtype=weight_dtype)
     vision_encoder.to(accelerator.device, dtype=weight_dtype)
 
-    save_path = f"unet_ckpt/{save_dir}"
+    save_path = "model_zoo/unet"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
 

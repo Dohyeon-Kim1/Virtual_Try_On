@@ -56,7 +56,7 @@ def train_emasc(dataloader, emasc, optimizer_emasc,
     emasc, vae, dataloader, lr_scheduler, criterion_vgg = accelerator.prepare(
         emasc, vae, dataloader, lr_scheduler, criterion_vgg)
     
-    save_path = f"emasc_ckpt/{save_dir}"
+    save_path = "model_zoo/emasc"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
     

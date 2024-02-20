@@ -188,7 +188,8 @@ def train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref,
                                                                              body_pose_model, seg_model, device)
         print(f"Epoch {epoch+1}/{epochs}  loss: {round(train_loss, 4)}  l1_loss: {round(train_l1_loss, 4)}  vgg_loss: {round(train_vgg_loss, 4)}")
     
-    save_path = f"tps_ckpt/{save_dir}"
+    save_path = "model_zoo/tps"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
-    torch.save({"tps": tps.state_dict(), "refinement": refinement.state_dict()}, f"{save_path}/tps_checkpoint_last.pth")
+    tps_path = f"{save_path}/tps_checkpoint_last.pth"
+    torch.save({"tps": tps.state_dict(), "refinement": refinement.state_dict()}, tps_path)

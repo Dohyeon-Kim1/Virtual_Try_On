@@ -85,7 +85,7 @@ def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_a
     vae.to(accelerator.device, dtype=weight_dtype)
     vision_encoder.to(accelerator.device, dtype=weight_dtype)
 
-    save_path = f"model_zoo/inversion_adpter/{save_dir}"
+    save_path = "model_zoo/inversion_adapter"
     if not(os.path.exists(save_path)):
         os.makedirs(save_path)
 
