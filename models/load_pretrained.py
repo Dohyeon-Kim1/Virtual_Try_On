@@ -4,19 +4,19 @@ import torch.nn.functional as F
 import torchvision
 from torchvision.models import resnet50
 import numpy as np
-from diffusers import DDIMScheduler
+from diffusers import DDIMScheduler, UNet2DConditionModel
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, AutoProcessor
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
 from mmpose.apis import inference_bottomup, init_model
 
-from models.ladi_vton import AutoencoderKL, StableDiffusionTryOnePipeline
+from models.ladi_vton import ConvNet_TPS, UNetVanilla, EMASC, InversionAdapter, AutoencoderKL, StableDiffusionTryOnePipeline
 from utils.data_utils import tensor_to_arr, coco_keypoint_mapping
 from utils.encode_text_word_embedding import encode_text_word_embedding
     
 
 class ClothCategoryClassfication():
-    def __init__(self, device="cuda"):
-        ckpt = torch.load("model_zoo/category_classifier/category_classifier_checkpoint_last.pth", map_location="cpu")
+    def __init__(self, category_classifier_ckpt, device="cuda"):
+        ckpt = torch.load(category_classifier_ckpt, map_location="cpu")
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device
@@ -101,7 +101,8 @@ class FashionSegmentation():
     
 
 class LadiVTON():
-    def __init__(self, weight_dtype=torch.float16, device="cuda"):
+    def __init__(self, category_classifier_ckpt, tps_ckpt, emasc_ckpt, inversion_adapter_ckpt, unet_ckpt, 
+                 weight_dtype=torch.float16, device="cuda"):
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device
@@ -116,10 +117,51 @@ class LadiVTON():
         self.processor = AutoProcessor.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
         self.tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_name_or_path, subfolder="tokenizer")
 
-        self.unet = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='extended_unet', dataset="dresscode")
-        self.emasc = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='emasc', dataset="dresscode")
-        self.inversion_adapter = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='inversion_adapter', dataset="dresscode")
-        self.tps, self.refinement = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', model='warping_module', dataset="dresscode")
+        if category_classifier_ckpt:
+            self.category_classifier = ClothCategoryClassfication()
+        else:
+            self.category_classifier = None
+        
+        if tps_ckpt:
+            tps_sd = torch.load(tps_ckpt, map_location="cpu")
+            self.tps = ConvNet_TPS(256, 192, 21, 3)
+            self.refinement = UNetVanilla(n_channels=24, n_classes=3, bilinear=True)
+            self.tps.load_state_dict(tps_sd["tps"])
+            self.refinement.load_state_dict(tps_sd["refinement"])
+        else:
+            self.tps, self.refinement = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                                       model='warping_module', dataset="dresscode")
+        
+        if emasc_ckpt:
+            emasc_sd = torch.load(emasc_ckpt, map_location="cpu")
+            in_feature_channels = [128, 128, 128, 256, 512]
+            out_feature_channels = [128, 256, 512, 512, 512]
+            self.emasc = EMASC(in_feature_channels, out_feature_channels, 
+                               kernel_size=3, padding=1, stride=1, type="nonlinear")
+            self.emasc.load_state_dict(emasc_sd)
+        else:
+            self.emasc = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                        model='emasc', dataset="dresscode")
+        
+        if inversion_adapter_ckpt:
+            inversion_adapter_sd = torch.load(inversion_adapter_ckpt, map_loacation="cpu")
+            self.inversion_adapter = InversionAdapter(input_dim=1280, hidden_dim=1280 * 4, output_dim=1024 * 16,
+                                                      num_encoder_layers=1, config=self.vision_encoder.config)
+            self.inversion_adapter.load_state_dict(inversion_adapter_sd)
+        else:
+            self.inversion_adapter = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                                    model='inversion_adapter', dataset="dresscode")
+        
+        if unet_ckpt:
+            unet_sd = torch.load(unet_ckpt)
+            self.unet = UNet2DConditionModel()
+            with torch.no_grad():
+                self.unet.conv_in = torch.nn.Conv2d(31, self.unet.conv_in.out_channels, kernel_size=3, padding=1)
+                self.unet.config['in_channels'] = 31
+            self.unet.load_state_dict(unet_sd)
+        else:
+            self.unet = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
+                                       model='extended_unet', dataset="dresscode")
 
         self.text_encoder.to(device, dtype=weight_dtype)
         self.vae.to(device, dtype=weight_dtype)
@@ -188,12 +230,21 @@ class LadiVTON():
         word_embeddings = self.inversion_adapter(clip_cloth_features.to(self.device))
         word_embeddings = word_embeddings.reshape((word_embeddings.shape[0], 16, -1))
         
-        category_text = {
-            'dresses': 'a dress',
-            'upper_body': 'an upper body garment',
-            'lower_body': 'a lower body garment'
+        if self.category_classifier:
+            category_text = {
+                'dresses': 'a suit of dress',
+                'short_sleeved': 'a short sleeve tee',
+                'long_sleeved': 'a long sleeve tee',
+                'short_pants': 'a pair of shorts',
+                'long_pants': 'a pair of pant',
+                'skirts': 'a skirt'
             }
-        
+        else:
+            category_text = {
+                'dresses': 'a dress',
+                'upper_body': 'an upper body garment',
+                'lower_body': 'a lower body garment'
+                }
         text = [f'a photo of a model wearing {category_text[c]} {" $ " * 16}' for c in category]
         
         # Tokenize text

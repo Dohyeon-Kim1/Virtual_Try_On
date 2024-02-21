@@ -17,14 +17,11 @@ def parse_argument():
     parser = argparse.ArgumentParser(description="Virtual Try On")
     parser.add_argument("--train", type=int, default=0, 
                         help="whether to train model or not")
-    parser.add_argument("--tps_ckpt", type=str, 
-                        default="model_zoo/tps/tps_checkpoint_last.pth")
-    parser.add_argument("--emasc_ckpt", type=str, 
-                        default="model_zoo/emasc/emasc_checkpoint_last.pth")
-    parser.add_argument("--inversion_adapter_ckpt", type=str, 
-                        default="model_zoo/inversion_adapter/inversion_adapter_checkpoint_last.pth")
-    parser.add_argument("--unet_ckpt", type=str, 
-                        default="model_zoo/unet/unet_checkpoint_last.pth")
+    parser.add_argument("--category_classifier_ckpt", type=str, default=None)
+    parser.add_argument("--tps_ckpt", type=str, default=None)
+    parser.add_argument("--emasc_ckpt", type=str, default=None)
+    parser.add_argument("--inversion_adapter_ckpt", type=str, default=None)
+    parser.add_argument("--unet_ckpt", type=str, default=None)
     parser.add_argument("--device", type=str, default="cuda", 
                         help="the location in which model train or infernce")
     
@@ -89,7 +86,6 @@ if __name__ == "__main__":
                 else:
                     in_feature_channels = [128, 128, 128, 256, 512]
                     out_feature_channels = [128, 256, 512, 512, 512]
-                    int_layers = [1, 2, 3, 4, 5]
                     emasc = EMASC(in_feature_channels, out_feature_channels,
                                     kernel_size=3, padding=1, stride=1, type="nonlinear")
 
@@ -138,7 +134,8 @@ if __name__ == "__main__":
                 train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_unet,
                         args.epochs, args.device)
     else:
-        inferencer = Inferencer(device=args.device)
+        inferencer = Inferencer(args.category_classifier_ckpt, args.tps_ckpt, args.emasc_ckpt,
+                                args.inversion_adapter_ckpt, args.unet_ckpt,device=args.device)
         body_img = Image.open(args.body_img)
         cloth_img = Image.open(args.cloth_img)
         
