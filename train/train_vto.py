@@ -11,13 +11,14 @@ from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjec
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 
-from models.ladi_vton.AutoencoderKL import AutoencoderKL
 from models import BodyPoseEstimation, FashionSegmentation, ClothCategoryClassfication
+from models.ladi_vton import AutoencoderKL
+from utils.data_utils import keypoint_to_heatmap, create_mask, remove_background
 from utils.encode_text_word_embedding import encode_text_word_embedding
-from utils.data_preprocessing import keypoint_to_heatmap, create_mask, remove_background
+
 
 def train_vto(dataloader, unet, inversion_adapter, tps, refinement, optimizer_unet,
-              epochs, save_dir, device="cpu"):
+              epochs, device="cuda"):
     torch.multiprocessing.set_sharing_strategy('file_system')
 
     # Setup accelerator.

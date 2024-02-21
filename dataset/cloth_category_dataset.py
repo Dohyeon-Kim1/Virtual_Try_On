@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 
-DATA_PATH = "/mnt/sdc/dhkim/ClothCategory"
+DATA_PATH = "/content/gdrive/MyDrive/ClothCategory"
 
 
 class ClothCategoryDataset(Dataset):

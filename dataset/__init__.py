@@ -1,0 +1,2 @@
+from dataset.body_cloth_pair_dataset import BodyClothPairDataset
+from dataset.cloth_category_dataset import ClothCategoryDataset

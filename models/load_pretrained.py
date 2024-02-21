@@ -9,15 +9,13 @@ from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjec
 from transformers import SegformerImageProcessor, AutoModelForSemanticSegmentation
 from mmpose.apis import inference_bottomup, init_model
 
-from models.ladi_vton.AutoencoderKL import AutoencoderKL
-from models.ladi_vton.tryon_pipe import StableDiffusionTryOnePipeline
+from models.ladi_vton import AutoencoderKL, StableDiffusionTryOnePipeline
+from utils.data_utils import tensor_to_arr, coco_keypoint_mapping
 from utils.encode_text_word_embedding import encode_text_word_embedding
-from utils import coco_keypoint_mapping
-from utils.data_preprocessing import tensor_to_arr
     
 
 class ClothCategoryClassfication():
-    def __init__(self, device="cpu"):
+    def __init__(self, device="cuda"):
         ckpt = torch.load("model_zoo/category_classifier/category_classifier_checkpoint_last.pth", map_location="cpu")
         if device == "cuda":
             assert torch.cuda.is_available()
@@ -54,8 +52,8 @@ class ClothCategoryClassfication():
 
 
 class BodyPoseEstimation():
-    def __init__(self, device="cpu"):
-        cfg = "./models/mmpose/configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
+    def __init__(self, device="cuda"):
+        cfg = "models/mmpose/configs/body_2d_keypoint/rtmo/coco/rtmo-s_8xb32-600e_coco-640x640.py"
         ckpt = "https://download.openmmlab.com/mmpose/v1/projects/rtmo/rtmo-s_8xb32-600e_coco-640x640-8db55a59_20231211.pth"
         if device == "cuda":
             assert torch.cuda.is_available()
@@ -77,7 +75,7 @@ class BodyPoseEstimation():
         
     
 class FashionSegmentation():
-    def __init__(self, device="cpu"):
+    def __init__(self, device="cuda"):
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device
@@ -103,7 +101,7 @@ class FashionSegmentation():
     
 
 class LadiVTON():
-    def __init__(self, weight_dtype=torch.float16, device="cpu"):
+    def __init__(self, weight_dtype=torch.float16, device="cuda"):
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device

@@ -7,14 +7,14 @@ from accelerate import Accelerator
 from diffusers.optimization import get_scheduler
 from tqdm.auto import tqdm
 
-from models.ladi_vton.AutoencoderKL import AutoencoderKL
 from models import BodyPoseEstimation, FashionSegmentation
+from models.ladi_vton import AutoencoderKL
+from utils.data_utils import mask_features, create_mask, remove_background
 from utils.vgg_loss import VGGLoss
-from utils.data_utils import mask_features
-from utils.data_preprocessing import create_mask, remove_background
+
 
 def train_emasc(dataloader, emasc, optimizer_emasc, 
-                epochs, save_dir, device="cpu"):
+                epochs, device="cuda"):
     
     # Setup accelerator.
     accelerator = Accelerator(

@@ -3,7 +3,7 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 
-from utils import resize
+from utils.data_utils import resize
 
 
 DATA_ROOT = ["/content/gdrive/MyDrive/DressCode", 

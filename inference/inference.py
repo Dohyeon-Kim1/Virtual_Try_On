@@ -1,10 +1,10 @@
 import torch
 import numpy as np
-from PIL import Image
 from torchvision import transforms
 
 from models import BodyPoseEstimation, FashionSegmentation, LadiVTON
-from utils import resize, create_mask, keypoint_to_heatmap, remove_background
+from utils.data_utils import resize, create_mask, keypoint_to_heatmap
+
 
 class Inferencer():
     def __init__(self, device="cpu"):

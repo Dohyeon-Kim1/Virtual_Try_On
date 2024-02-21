@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from models import BodyPoseEstimation, FashionSegmentation
 from utils import create_mask, keypoint_to_heatmap
-from utils.data_preprocessing import extract_cloth, remove_background
+from utils.data_utils import extract_cloth, remove_background
 from utils.vgg_loss import VGGLoss
 
 
@@ -165,7 +165,7 @@ def training_loop_refinement(dataloader, tps, refinement, optimizer_ref, criteri
 
 
 def train_tps(dataloader, tps, refinement, optimizer_tps, optimizer_ref, 
-              epochs, save_dir, device="cpu"):
+              epochs, device="cuda"):
     tps.to(device)
     refinement.to(device)
     

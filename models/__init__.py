@@ -1,1 +1,2 @@
-from .load_pretrained import *
+import models.ladi_vton
+from models.load_pretrained import *

@@ -12,12 +12,12 @@ from accelerate import Accelerator
 from tqdm.auto import tqdm
 
 from models import BodyPoseEstimation, FashionSegmentation, ClothCategoryClassfication
+from utils.data_utils import create_mask, remove_background
 from utils.encode_text_word_embedding import encode_text_word_embedding
-from utils.data_preprocessing import create_mask, remove_background
 
 
 def train_inversion_adapter(dataloader, inversion_adapter, optimizer_inversion_adapter,
-                            epochs, save_dir, device="cpu"):
+                            epochs, device="cuda"):
     # Setup accelerator.
     accelerator = Accelerator(
         gradient_accumulation_steps=1,
