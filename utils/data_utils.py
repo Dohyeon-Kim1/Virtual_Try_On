@@ -42,9 +42,9 @@ def resize(img, size, keep_ratio=True, return_pad_size=False):
         new_img = img.resize(size[::-1])
     
     if return_pad_size and int(w*ratio) > size[1]:
-        return new_img, diff//2
-    elif return_pad_size and int(w*ratio) <= size[1]:
         return new_img, None
+    elif return_pad_size and int(w*ratio) <= size[1]:
+        return new_img, diff//2
     else:
         return new_img
 

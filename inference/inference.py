@@ -8,8 +8,8 @@ from utils.data_utils import resize, create_mask, keypoint_to_heatmap, face_mask
 
 
 class Inferencer():
-    def __init__(self, category_classifier_ckpt, tps_ckpt, emasc_ckpt,
-                 inversion_adapter_ckpt, unet_ckpt, device="cuda"):
+    def __init__(self, category_classifier_ckpt=None, tps_ckpt=None, emasc_ckpt=None,
+                 inversion_adapter_ckpt=None, unet_ckpt=None, device="cuda"):
         if device == "cuda":
             assert torch.cuda.is_available()
         self.device = device
@@ -66,8 +66,8 @@ class Inferencer():
         }
         vton_img = self.vton_model.predict(kwargs)
         
-        mask = np.array(face_mask(seg_map)[0])
-        vton_img = tensor_to_arr(body_img, batch=False) * mask + np.array(vton_img) * (1-mask)
+        mask = np.array(face_mask(seg_map)[0].permute(1,2,0).cpu())
+        vton_img = (tensor_to_arr(body_img, batch=False) * mask + np.array(vton_img) * (1-mask)).astype(np.uint8)
         if pad_size is not None:
             vton_img = vton_img[:,pad_size:-pad_size,:]
         vton_img = Image.fromarray(vton_img)
