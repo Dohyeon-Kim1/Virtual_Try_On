@@ -118,7 +118,7 @@ class LadiVTON():
         self.tokenizer = CLIPTokenizer.from_pretrained(pretrained_model_name_or_path, subfolder="tokenizer")
 
         if category_classifier_ckpt:
-            self.category_classifier = ClothCategoryClassfication()
+            self.category_classifier = ClothCategoryClassfication(category_classifier_ckpt, device=device)
         else:
             self.category_classifier = None
         
@@ -144,7 +144,7 @@ class LadiVTON():
                                         model='emasc', dataset="dresscode")
         
         if inversion_adapter_ckpt:
-            inversion_adapter_sd = torch.load(inversion_adapter_ckpt, map_loacation="cpu")
+            inversion_adapter_sd = torch.load(inversion_adapter_ckpt, map_location="cpu")
             self.inversion_adapter = InversionAdapter(input_dim=1280, hidden_dim=1280 * 4, output_dim=1024 * 16,
                                                       num_encoder_layers=1, config=self.vision_encoder.config)
             self.inversion_adapter.load_state_dict(inversion_adapter_sd)
@@ -153,11 +153,10 @@ class LadiVTON():
                                                     model='inversion_adapter', dataset="dresscode")
         
         if unet_ckpt:
-            unet_sd = torch.load(unet_ckpt)
-            self.unet = UNet2DConditionModel()
-            with torch.no_grad():
-                self.unet.conv_in = torch.nn.Conv2d(31, self.unet.conv_in.out_channels, kernel_size=3, padding=1)
-                self.unet.config['in_channels'] = 31
+            unet_sd = torch.load(unet_ckpt, map_location="cpu")
+            config = UNet2DConditionModel.load_config("stabilityai/stable-diffusion-2-inpainting", subfolder="unet")
+            config['in_channels'] = 31
+            self.unet = UNet2DConditionModel.from_config(config)
             self.unet.load_state_dict(unet_sd)
         else:
             self.unet = torch.hub.load(repo_or_dir='miccunifi/ladi-vton', source='github', 
