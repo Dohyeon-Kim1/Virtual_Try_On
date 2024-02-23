@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 
 def tensor_to_pil(img, scope=[-1,1]):
     img = ((img - scope[0]) / (scope[1] - scope[0])) * 255
-    img = np.array(img.unsqueeze(0).permute(1,2,0).cpu(), dtype=np.uint8)
+    img = np.array(img.squeeze(0).permute(1,2,0).cpu(), dtype=np.uint8)
     return Image.fromarray(img)
 
 
@@ -15,7 +15,7 @@ def tensor_to_arr(img, scope=[-1,1], batch=True):
     if batch:
         img = np.array(img.permute(0,2,3,1).cpu(), dtype=np.uint8)
     else:
-        img = np.array(img.unsqueeze(0).permute(1,2,0).cpu(), dtype=np.uint8)
+        img = np.array(img.squeeze(0).permute(1,2,0).cpu(), dtype=np.uint8)
     return img
 
 
@@ -25,7 +25,7 @@ def remove_background(imgs, seg_maps):
     return imgs
 
 
-def resize(img, size, keep_ratio=True):
+def resize(img, size, keep_ratio=True, return_pad_size=False):
     if keep_ratio:
         w, h = img.size
         ratio = size[0] / h
@@ -40,7 +40,13 @@ def resize(img, size, keep_ratio=True):
         new_img = Image.fromarray(new_img)
     else:
         new_img = img.resize(size[::-1])
-    return new_img
+    
+    if return_pad_size and int(w*ratio) > size[1]:
+        return new_img, diff//2
+    elif return_pad_size and int(w*ratio) <= size[1]:
+        return new_img, None
+    else:
+        return new_img
 
 
 def coco_keypoint_mapping(key_pt):
@@ -186,6 +192,18 @@ def extract_cloth(cloth_imgs, seg_maps, categories):
         only_cloth_imgs.append(only_cloth_img)
     only_cloth_imgs = torch.stack(only_cloth_imgs)
     return only_cloth_imgs
+
+
+def face_mask(seg_maps):
+    face_masks = []
+    for seg_map in seg_maps:
+        mask = (seg_map == 1) + \
+               (seg_map == 2) + \
+               (seg_map == 3) + \
+               (seg_map == 11)
+        face_masks.append(torch.stack([mask]*3))
+    face_masks = torch.stack(face_masks)
+    return face_masks
 
 
 def mask_features(features: list, mask: torch.Tensor):

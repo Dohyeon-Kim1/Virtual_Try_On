@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 from torchvision import transforms
+from PIL import Image
 
 from models import BodyPoseEstimation, FashionSegmentation, LadiVTON
-from utils.data_utils import resize, create_mask, keypoint_to_heatmap
+from utils.data_utils import resize, create_mask, keypoint_to_heatmap, face_mask, tensor_to_arr
 
 
 class Inferencer():
@@ -26,7 +27,7 @@ class Inferencer():
         size = (512,384)
 
         ## input preprocessing
-        body_img = resize(body_img, size=size, keep_ratio=True)
+        body_img, pad_size = resize(body_img, size=size, keep_ratio=True, return_pad_size=True)
         cloth_img = resize(cloth_img, size=size, keep_ratio=True)
         category = [category]
         
@@ -64,5 +65,11 @@ class Inferencer():
             "num_inference_steps": num_inference_steps
         }
         vton_img = self.vton_model.predict(kwargs)
+        
+        mask = np.array(face_mask(seg_map)[0])
+        vton_img = tensor_to_arr(body_img, batch=False) * mask + np.array(vton_img) * (1-mask)
+        if pad_size is not None:
+            vton_img = vton_img[:,pad_size:-pad_size,:]
+        vton_img = Image.fromarray(vton_img)
         return vton_img
 
