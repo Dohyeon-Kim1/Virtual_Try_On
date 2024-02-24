@@ -1,6 +1,3 @@
-# Virtual_Try_On
-<br>
-
 # Introduce
 <br> 
 
@@ -9,6 +6,7 @@
 - Colab ver : [demo.ipynb](https://colab.research.google.com/drive/1d8Gru4StkeEqDCKkezqBWk-1LR1SqKwa?usp=sharing)
 
 - Colab+Web ver : [demo_web.ipynb](https://colab.research.google.com/drive/1x_ekYurjD4MFr4r0KIX_RDQxc1cunx5U?usp=sharing)
+<br>
 
 # How to Use
 
@@ -51,10 +49,10 @@
 
 # Model Usage
 
-### Image Generator
 [***Ladi Vton***]([https://github.com/Stability-AI/stablediffusion](https://github.com/miccunifi/ladi-vton)) <br>
 <center><img width="100%" alt="image" src="./images/ladi_vton.png"></center> 
 
+<br>
 
 # Sample Images
 <p align="center">
@@ -69,7 +67,7 @@
  <img width="40%" height="450" src="./images/lower1.jpg">
   <img width="40%" height="450" src="./images/dress1.jpg">
 </p>
-
+<br>
 
 # Contributions
 |     Name      |                   Kim DoHyeon                    |              Park JiWan              |          Choi Whan          |          Kwon Yongwoo         |         Hwang  Hosik         |         Choi Taeeun         |         Jin Yujin         |         
