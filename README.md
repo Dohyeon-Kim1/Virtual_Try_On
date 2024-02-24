@@ -70,7 +70,7 @@
 <br>
 
 # Contributions
-|     Name      |                   Kim DoHyeon                    |              Park JiWan              |          Choi Hwan          |          Kwon Yongwoo         |         Hwang  Hosik         |         Choi Taeeun         |         Jin Yujin         |         
+|     Name      |                   Kim DoHyeon                    |              Park JiWan              |          Choi Hwan          |          Kwon YongWoo         |         Hwang  HoSik         |         Choi TaeEun         |         Jin YuJin         |         
 | :-----------: | :----------------------------------------------: | :----------------------------------: | :----------------------------------------: | :-------------------------------------: | :----------------------------------: | :----------------------------------: | :----------------------------------: |  
 | **Github ID** | [@Dohyeon-Kim1](https://github.com/Dohyeon-Kim1) | [@jiwaan](https://github.com/jiwaan) | [@whan789](https://github.com/whan789) | [@Kwonyongwoo](https://github.com/Kwonyongwoo) | [@audtia22](https://github.com/audtla22) | [@tiachoi2001](https://github.com/tiachoi2001) | [@eugenebori](https://github.com/eugenebori) |
 
